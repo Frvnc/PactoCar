@@ -121,7 +121,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Escanear imagen backend
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
           format: table
@@ -130,7 +130,7 @@ jobs:
           severity: CRITICAL
 
       - name: Escanear imagen frontend
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
           format: table
