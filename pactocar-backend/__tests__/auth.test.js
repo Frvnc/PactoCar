@@ -5,7 +5,7 @@ process.env.JWT_SECRET = 'test-jwt-secret-pactocar';
 jest.mock('../db', () => ({ query: jest.fn() }));
 
 const request = require('supertest');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const app = require('../index');
 const db = require('../db');
 
