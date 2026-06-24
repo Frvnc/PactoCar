@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const db = require('./db');
@@ -38,10 +40,20 @@ app.get('/api/admin/dashboard', verificarToken, (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    process.stdout.write(`Servidor corriendo en el puerto ${PORT}\n`);
-  });
+  (async () => {
+    try {
+      const sql = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf8');
+      await db.query(sql);
+      app.listen(PORT, () => {
+        process.stdout.write(`Servidor corriendo en el puerto ${PORT}\n`);
+      });
+    } catch (err) {
+      process.stderr.write(`Error al inicializar la base de datos: ${err.message}\n`);
+      process.exit(1);
+    }
+  })();
 }
 
 module.exports = app;

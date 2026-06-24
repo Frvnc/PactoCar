@@ -1,0 +1,8 @@
+# Copiar este archivo a terraform.tfvars y completar con valores reales.
+# terraform.tfvars NO se sube al repositorio (ver .gitignore).
+
+aws_region  = "us-east-1"
+db_name     = "pactocar_db"
+db_username = "postgres"
+db_password = "COMPLETAR_password_seguro_minimo_16_chars"
+jwt_secret  = "COMPLETAR_secreto_JWT_largo_y_aleatorio_minimo_32_chars"
