@@ -110,3 +110,24 @@ describe('GET /api/verificacion/mia', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ─── Errores 500 (catch blocks) ───────────────────────────────────────────────
+
+describe('Errores de base de datos — 500', () => {
+  test('POST /api/verificacion — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/verificacion')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ rut: '12345678-9', numero_licencia: 'A1-123456', clase_licencia: 'B', vencimiento_licencia: '2028-12-31' });
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/verificacion/mia — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/verificacion/mia')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(500);
+  });
+});

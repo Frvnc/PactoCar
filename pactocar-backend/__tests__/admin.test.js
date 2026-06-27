@@ -293,3 +293,66 @@ describe('PATCH /api/admin/fotos/:id', () => {
     expect(res.status).toBe(403);
   });
 });
+
+// ─── Errores 500 (catch blocks) ───────────────────────────────────────────────
+
+describe('Errores de base de datos — 500', () => {
+  test('GET /api/admin/usuarios — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/admin/usuarios')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/admin/usuarios/:id — 404 si usuario no existe', async () => {
+    db.query.mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .patch('/api/admin/usuarios/99')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ activo: true });
+    expect(res.status).toBe(404);
+  });
+
+  test('GET /api/admin/estadisticas — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/admin/estadisticas')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/admin/verificaciones — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/admin/verificaciones')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/admin/verificaciones/:id — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/admin/verificaciones/1')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ accion: 'aprobar' });
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/admin/fotos — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/admin/fotos')
+      .set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/admin/fotos/:id — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/admin/fotos/1')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ accion: 'aprobar' });
+    expect(res.status).toBe(500);
+  });
+});

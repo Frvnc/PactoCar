@@ -225,3 +225,43 @@ describe('PATCH /api/reservas/:id', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ─── Errores 500 (catch blocks) ───────────────────────────────────────────────
+
+describe('Errores de base de datos — 500', () => {
+  test('POST /api/reservas — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/reservas')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ vehiculo_id: 1, fecha_inicio: '2027-01-10', fecha_fin: '2027-01-15' });
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/reservas/mias — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/reservas/mias')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/reservas/mis-vehiculos — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/reservas/mis-vehiculos')
+      .set('Authorization', `Bearer ${tokenPropietario}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/reservas/:id — 500 si DB falla al actualizar', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'confirmada' });
+    expect(res.status).toBe(500);
+  });
+});

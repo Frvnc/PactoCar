@@ -189,4 +189,51 @@ describe('POST /api/vehiculos/foto', () => {
     const res = await request(app).post('/api/vehiculos/foto');
     expect(res.status).toBe(401);
   });
+
+  test('400 — imagen mayor a 5 MB es rechazada', async () => {
+    const bigBuffer = Buffer.alloc(6 * 1024 * 1024);
+    const res = await request(app)
+      .post('/api/vehiculos/foto')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .attach('foto', bigBuffer, { filename: 'grande.jpg', contentType: 'image/jpeg' });
+    expect(res.status).toBe(400);
+  });
+
+
+});
+
+// ─── Errores 500 (catch blocks) ───────────────────────────────────────────────
+
+describe('Errores de base de datos — 500', () => {
+  test('GET /api/vehiculos — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app).get('/api/vehiculos');
+    expect(res.status).toBe(500);
+  });
+
+  test('POST /api/vehiculos — 500 si DB falla (error generico)', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/vehiculos')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ marca: 'Toyota', modelo: 'Corolla', anio: 2022, patente: 'ABCD12', precio_diario_clp: 25000 });
+    expect(res.status).toBe(500);
+  });
+
+  test('GET /api/vehiculos/mios — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/vehiculos/mios')
+      .set('Authorization', `Bearer ${tokenPropietario}`);
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/vehiculos/:id/disponible — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/vehiculos/1/disponible')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({});
+    expect(res.status).toBe(500);
+  });
 });
