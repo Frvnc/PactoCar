@@ -3,6 +3,10 @@
 process.env.JWT_SECRET = 'test-jwt-secret-pactocar';
 
 jest.mock('../db', () => ({ query: jest.fn() }));
+jest.mock('@aws-sdk/client-s3', () => ({
+  S3Client: jest.fn().mockImplementation(() => ({ send: jest.fn().mockResolvedValue({}) })),
+  PutObjectCommand: jest.fn(),
+}));
 
 const request = require('supertest');
 const bcrypt = require('bcryptjs');

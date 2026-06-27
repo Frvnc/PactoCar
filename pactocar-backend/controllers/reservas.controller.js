@@ -105,29 +105,41 @@ const getReservasVehiculos = async (req, res) => {
 
 const actualizarEstadoReserva = async (req, res) => {
   try {
-    if (req.usuario.rol_id !== 2) {
-      return res.status(403).json({ error: 'Solo los propietarios pueden gestionar reservas.' });
-    }
-
     const { id } = req.params;
     const { estado } = req.body;
+    const { rol_id, id: usuario_id } = req.usuario;
 
     if (!ESTADOS_VALIDOS.includes(estado)) {
       return res.status(422).json({ error: 'Estado no valido.' });
     }
 
-    const check = await db.query(
-      `SELECT r.id FROM reservas r
-       JOIN vehiculos v ON r.vehiculo_id = v.id
-       WHERE r.id = $1 AND v.propietario_id = $2`,
-      [id, req.usuario.id]
-    );
-    if (check.rows.length === 0) {
-      return res.status(404).json({ error: 'Reserva no encontrada.' });
+    if (rol_id === 3) {
+      if (estado !== 'cancelada') {
+        return res.status(403).json({ error: 'Los conductores solo pueden cancelar sus reservas.' });
+      }
+      const check = await db.query(
+        'SELECT id FROM reservas WHERE id = $1 AND conductor_id = $2',
+        [id, usuario_id]
+      );
+      if (check.rows.length === 0) {
+        return res.status(404).json({ error: 'Reserva no encontrada.' });
+      }
+    } else if (rol_id === 2) {
+      const check = await db.query(
+        `SELECT r.id FROM reservas r
+         JOIN vehiculos v ON r.vehiculo_id = v.id
+         WHERE r.id = $1 AND v.propietario_id = $2`,
+        [id, usuario_id]
+      );
+      if (check.rows.length === 0) {
+        return res.status(404).json({ error: 'Reserva no encontrada.' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Solo propietarios y conductores pueden gestionar reservas.' });
     }
 
     const resultado = await db.query(
-      `UPDATE reservas SET estado = $1 WHERE id = $2 RETURNING *`,
+      'UPDATE reservas SET estado = $1 WHERE id = $2 RETURNING *',
       [estado, id]
     );
 

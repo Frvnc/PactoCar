@@ -20,10 +20,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
 -- Para bases de datos existentes que no tienen la columna verificado
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS verificado BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Para bases de datos existentes que no tienen imagen_url en vehiculos
-ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS imagen_url TEXT;
-ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS imagen_aprobada BOOLEAN NOT NULL DEFAULT FALSE;
-
 CREATE TABLE IF NOT EXISTS vehiculos (
     id                SERIAL PRIMARY KEY,
     propietario_id    INTEGER NOT NULL REFERENCES usuarios(id),
@@ -37,6 +33,10 @@ CREATE TABLE IF NOT EXISTS vehiculos (
     imagen_aprobada   BOOLEAN NOT NULL DEFAULT FALSE,
     creado_en         TIMESTAMP DEFAULT NOW()
 );
+
+-- Para bases de datos existentes que no tienen imagen_url en vehiculos
+ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS imagen_url TEXT;
+ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS imagen_aprobada BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS reservas (
     id           SERIAL PRIMARY KEY,
