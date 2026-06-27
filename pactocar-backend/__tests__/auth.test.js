@@ -10,8 +10,11 @@ jest.mock('@aws-sdk/client-s3', () => ({
 
 const request = require('supertest');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const app = require('../index');
 const db = require('../db');
+
+const tokenUsuario = jwt.sign({ id: 1, rol_id: 2, verificado: true }, process.env.JWT_SECRET);
 
 let hashValido;
 
@@ -142,8 +145,6 @@ describe('POST /api/auth/login', () => {
 // ─── Editar perfil ───────────────────────────────────────────────────────────
 
 describe('PATCH /api/auth/perfil', () => {
-  const jwt = require('jsonwebtoken');
-  const tokenUsuario = jwt.sign({ id: 1, rol_id: 2, verificado: true }, process.env.JWT_SECRET);
 
   test('200 — actualiza nombre correctamente', async () => {
     db.query
@@ -203,12 +204,52 @@ describe('PATCH /api/auth/perfil', () => {
     expect(res.status).toBe(422);
   });
 
+  test('404 — usuario no existe en DB al editar perfil', async () => {
+    db.query.mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Ana', password_actual: 'password123' });
+    expect(res.status).toBe(404);
+  });
+
   test('401 — sin token', async () => {
     const res = await request(app)
       .patch('/api/auth/perfil')
       .send({ nombre_completo: 'Ana', password_actual: 'password123' });
 
     expect(res.status).toBe(401);
+  });
+});
+
+// ─── Errores 500 (catch blocks) ───────────────────────────────────────────────
+
+describe('Errores de base de datos — 500', () => {
+  test('POST /api/auth/register — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ nombre_completo: 'Ana', email: 'ana@test.cl', password: 'password123', rol_id: 2 });
+    expect(res.status).toBe(500);
+  });
+
+  test('POST /api/auth/login — 500 si DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'ana@test.cl', password: 'password123' });
+    expect(res.status).toBe(500);
+  });
+
+  test('PATCH /api/auth/perfil — 500 si DB falla al actualizar', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, password_hash: hashValido }] })
+      .mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Ana', password_actual: 'password123' });
+    expect(res.status).toBe(500);
   });
 });
 

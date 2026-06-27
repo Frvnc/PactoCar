@@ -112,6 +112,18 @@ describe('PATCH /api/admin/usuarios/:id', () => {
     expect(res.status).toBe(422);
   });
 
+  test('200 — admin cambia rol de usuario', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 2, nombre_completo: 'Juan', email: 'juan@test.cl', rol_id: 2, activo: true, verificado: false }],
+    });
+    const res = await request(app)
+      .patch('/api/admin/usuarios/2')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send({ rol_id: 2 });
+    expect(res.status).toBe(200);
+    expect(res.body.usuario.rol_id).toBe(2);
+  });
+
   test('403 — conductor no puede usar endpoint admin', async () => {
     const res = await request(app)
       .patch('/api/admin/usuarios/3')
