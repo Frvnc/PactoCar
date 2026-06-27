@@ -13,10 +13,6 @@ const PrivateRoute = ({ children, rolPermitido }) => {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  if (auth.usuario?.rol_id !== 1 && auth.usuario?.verificado === false) {
-    return <Navigate to="/pending" replace />;
-  }
-
   return children;
 };
 
