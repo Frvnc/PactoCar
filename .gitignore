@@ -1,7 +1,3 @@
-# ============================================================
-# SEGURIDAD — Nunca subir al repositorio
-# ============================================================
-
 # Variables de entorno con credenciales reales
 .env
 .env.local
@@ -9,48 +5,29 @@
 .env.staging
 *.env
 
-# ============================================================
-# CONTEXTO ACADÉMICO E IA — Material interno del equipo
-# ============================================================
-
-# Informes, rúbricas, PDFs y documentos de contexto del curso
+# Documentos internos del equipo
 informes-contexto/
-
-# Configuración y memoria de Claude (asistente IA)
 .claude/
 
-# ============================================================
-# DEPENDENCIAS
-# ============================================================
-
+# Dependencias
 node_modules/
 .pnp
 .pnp.js
 .yarn/install-state.gz
 
-# ============================================================
-# BUILDS Y COMPILADOS
-# ============================================================
-
+# Builds y compilados
 dist/
 dist-ssr/
 build/
 *.local
 
-# ============================================================
-# LOGS
-# ============================================================
-
+# Logs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-
-# ============================================================
-# SISTEMA OPERATIVO
-# ============================================================
 
 # macOS
 .DS_Store
@@ -66,10 +43,7 @@ $RECYCLE.BIN/
 # Linux
 *~
 
-# ============================================================
-# EDITORES E IDEs
-# ============================================================
-
+# Editores e IDEs
 .vscode/*
 !.vscode/extensions.json
 .idea/
@@ -80,17 +54,10 @@ $RECYCLE.BIN/
 *.sw?
 *.swp
 
-# ============================================================
-# DOCKER
-# ============================================================
-
-# Ignorar overrides locales de compose
+# Docker
 docker-compose.override.yml
 
-# ============================================================
-# TERRAFORM (para cuando se implemente IaC)
-# ============================================================
-
+# Terraform
 **/.terraform/
 **/*.tfstate
 **/*.tfstate.backup

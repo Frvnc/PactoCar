@@ -67,6 +67,15 @@ describe('POST /api/auth/register', () => {
 
     expect(res.status).toBe(400);
   });
+
+  test('422 — rechaza password menor a 8 caracteres', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ nombre_completo: 'Ana', email: 'ana@test.cl', password: 'corta', rol_id: 2 });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/8 caracteres/i);
+  });
 });
 
 // ─── Login ───────────────────────────────────────────────────────────────────
@@ -74,7 +83,7 @@ describe('POST /api/auth/register', () => {
 describe('POST /api/auth/login', () => {
   test('200 — devuelve token con credenciales válidas', async () => {
     db.query.mockResolvedValueOnce({
-      rows: [{ id: 1, nombre_completo: 'Ana López', email: 'ana@test.cl', password_hash: hashValido, rol_id: 2, activo: true }],
+      rows: [{ id: 1, nombre_completo: 'Ana López', email: 'ana@test.cl', password_hash: hashValido, rol_id: 2, activo: true, verificado: true }],
     });
 
     const res = await request(app)
@@ -104,6 +113,100 @@ describe('POST /api/auth/login', () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({ email: 'noexiste@test.cl', password: 'password123' });
+
+    expect(res.status).toBe(401);
+  });
+
+  test('400 — rechaza body sin email o password', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'solo@test.cl' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('403 — rechaza usuario suspendido', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{ id: 2, email: 'suspendido@test.cl', password_hash: hashValido, rol_id: 3, activo: false }],
+    });
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'suspendido@test.cl', password: 'password123' });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/suspendido/i);
+  });
+});
+
+// ─── Editar perfil ───────────────────────────────────────────────────────────
+
+describe('PATCH /api/auth/perfil', () => {
+  const jwt = require('jsonwebtoken');
+  const tokenUsuario = jwt.sign({ id: 1, rol_id: 2, verificado: true }, process.env.JWT_SECRET);
+
+  test('200 — actualiza nombre correctamente', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, password_hash: hashValido }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, nombre_completo: 'Nuevo Nombre', email: 'ana@test.cl', rol_id: 2 }] });
+
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Nuevo Nombre', password_actual: 'password123' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.usuario.nombre_completo).toBe('Nuevo Nombre');
+  });
+
+  test('200 — actualiza nombre y password nueva', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, password_hash: hashValido }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, nombre_completo: 'Ana', email: 'ana@test.cl', rol_id: 2 }] });
+
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Ana', password_actual: 'password123', password_nueva: 'nueva_password456' });
+
+    expect(res.status).toBe(200);
+  });
+
+  test('400 — faltan nombre o password actual', async () => {
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Solo nombre' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('401 — password actual incorrecta', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, password_hash: hashValido }] });
+
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Ana', password_actual: 'incorrecta' });
+
+    expect(res.status).toBe(401);
+  });
+
+  test('422 — nueva password menor a 8 caracteres', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, password_hash: hashValido }] });
+
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .set('Authorization', `Bearer ${tokenUsuario}`)
+      .send({ nombre_completo: 'Ana', password_actual: 'password123', password_nueva: 'corta' });
+
+    expect(res.status).toBe(422);
+  });
+
+  test('401 — sin token', async () => {
+    const res = await request(app)
+      .patch('/api/auth/perfil')
+      .send({ nombre_completo: 'Ana', password_actual: 'password123' });
 
     expect(res.status).toBe(401);
   });
