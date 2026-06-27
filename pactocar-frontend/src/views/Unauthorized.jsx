@@ -4,10 +4,15 @@ const Unauthorized = () => {
   const navigate = useNavigate();
 
   return (
-    <div>
-      <h2>Acceso denegado</h2>
-      <p>No tienes permisos para ver esta página.</p>
-      <button onClick={() => navigate(-1)}>Volver</button>
+    <div className="page">
+      <div className="error-page">
+        <div className="error-code">403</div>
+        <div className="error-title">Acceso denegado</div>
+        <div className="error-desc">No tienes permisos para ver esta pagina.</div>
+        <button className="btn" style={{ maxWidth: '200px' }} onClick={() => navigate(-1)}>
+          Volver
+        </button>
+      </div>
     </div>
   );
 };

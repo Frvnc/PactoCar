@@ -201,27 +201,12 @@ resource "aws_ecr_repository" "frontend" {
 }
 
 # ─── IAM ──────────────────────────────────────────────────────────────────────
-# Si AWS Academy rechaza la creacion del rol, reemplazar execution_role_arn
-# en aws_ecs_task_definition por la ARN del LabRole existente:
-# arn:aws:iam::<ACCOUNT_ID>:role/LabRole
 
-resource "aws_iam_role" "ecs_task_execution" {
-  name = "pactocar-ecs-task-execution-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-    }]
-  })
+data "aws_iam_role" "lab_role" {
+  name = "LabRole"
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
-  role       = aws_iam_role.ecs_task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
+data "aws_caller_identity" "current" {}
 
 # ─── CLOUDWATCH ───────────────────────────────────────────────────────────────
 
@@ -315,7 +300,8 @@ resource "aws_ecs_task_definition" "backend" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  execution_role_arn       = data.aws_iam_role.lab_role.arn
+  task_role_arn            = data.aws_iam_role.lab_role.arn
 
   container_definitions = jsonencode([{
     name  = "pactocar-backend"
@@ -334,7 +320,9 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "DB_NAME",     value = var.db_name },
       { name = "DB_USER",     value = var.db_username },
       { name = "DB_PASSWORD", value = var.db_password },
-      { name = "JWT_SECRET",  value = var.jwt_secret }
+      { name = "JWT_SECRET",     value = var.jwt_secret },
+      { name = "S3_BUCKET_NAME", value = aws_s3_bucket.fotos.bucket },
+      { name = "AWS_REGION",     value = var.aws_region }
     ]
 
     logConfiguration = {
@@ -352,7 +340,7 @@ resource "aws_ecs_service" "backend" {
   name            = "pactocar-api"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = 2
+  desired_count   = 1
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -378,8 +366,112 @@ resource "aws_ecs_service" "backend" {
 
   depends_on = [
     aws_lb_listener.http,
-    aws_iam_role_policy_attachment.ecs_task_execution,
   ]
 
   tags = { Name = "pactocar-api" }
+}
+
+# ─── S3 FOTOS VEHICULOS ───────────────────────────────────────────────────────
+
+resource "aws_s3_bucket" "fotos" {
+  bucket = "pactocar-fotos-${data.aws_caller_identity.current.account_id}"
+  tags   = { Name = "pactocar-fotos" }
+}
+
+resource "aws_s3_bucket_public_access_block" "fotos" {
+  bucket                  = aws_s3_bucket.fotos.id
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "fotos_public_read" {
+  bucket     = aws_s3_bucket.fotos.id
+  depends_on = [aws_s3_bucket_public_access_block.fotos]
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "PublicRead"
+      Effect    = "Allow"
+      Principal = "*"
+      Action    = "s3:GetObject"
+      Resource  = "${aws_s3_bucket.fotos.arn}/*"
+    }]
+  })
+}
+
+# ─── CLOUDWATCH ALARMS ────────────────────────────────────────────────────────
+
+resource "aws_cloudwatch_metric_alarm" "ecs_cpu_alto" {
+  alarm_name          = "pactocar-ecs-cpu-alto"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 70
+  alarm_description   = "CPU del servicio ECS pactocar-api supera el 70%"
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.backend.name
+  }
+
+  alarm_actions = []
+  ok_actions    = []
+
+  tags = { Name = "pactocar-alarm-cpu" }
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_memoria_alta" {
+  alarm_name          = "pactocar-ecs-memoria-alta"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "Memoria del servicio ECS pactocar-api supera el 80%"
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.backend.name
+  }
+
+  alarm_actions = []
+  ok_actions    = []
+
+  tags = { Name = "pactocar-alarm-memoria" }
+}
+
+# ─── API GATEWAY (HTTPS para el API) ──────────────────────────────────────────
+
+resource "aws_apigatewayv2_api" "backend" {
+  name          = "pactocar-api-gw"
+  protocol_type = "HTTP"
+  tags          = { Name = "pactocar-api-gw" }
+}
+
+resource "aws_apigatewayv2_integration" "alb" {
+  api_id                 = aws_apigatewayv2_api.backend.id
+  integration_type       = "HTTP_PROXY"
+  integration_uri        = "http://${aws_lb.main.dns_name}"
+  integration_method     = "ANY"
+  payload_format_version = "1.0"
+}
+
+resource "aws_apigatewayv2_route" "default" {
+  api_id    = aws_apigatewayv2_api.backend.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.alb.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.backend.id
+  name        = "$default"
+  auto_deploy = true
+  tags        = { Name = "pactocar-api-gw-stage" }
 }

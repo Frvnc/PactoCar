@@ -5,9 +5,11 @@ const path = require('path');
 require('dotenv').config();
 
 const db = require('./db');
-const verificarToken = require('./middlewares/auth');
 const authRoutes = require('./routes/auth.routes');
 const vehiculosRoutes = require('./routes/vehiculos.routes');
+const adminRoutes = require('./routes/admin.routes');
+const reservasRoutes = require('./routes/reservas.routes');
+const verificacionRoutes = require('./routes/verificacion.routes');
 
 const app = express();
 
@@ -16,6 +18,9 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vehiculos', vehiculosRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reservas', reservasRoutes);
+app.use('/api/verificacion', verificacionRoutes);
 
 app.get('/api/ping', async (req, res) => {
   try {
@@ -27,16 +32,6 @@ app.get('/api/ping', async (req, res) => {
   } catch (error) {
     return res.status(500).json({ error: 'No se pudo conectar a la base de datos.' });
   }
-});
-
-app.get('/api/admin/dashboard', verificarToken, (req, res) => {
-  if (req.usuario.rol_id !== 1) {
-    return res.status(403).json({ error: 'Acceso prohibido. Se requieren permisos de Administrador.' });
-  }
-  return res.status(200).json({
-    mensaje: '¡Bienvenido al panel de PactoCar!',
-    usuario: req.usuario,
-  });
 });
 
 const PORT = process.env.PORT || 3000;

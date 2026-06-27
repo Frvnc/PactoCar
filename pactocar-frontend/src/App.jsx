@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import PrivateRoute from './components/PrivateRoute';
 
 import Home from './views/Home';
@@ -9,16 +10,19 @@ import AdminDashboard from './views/AdminDashboard';
 import MisVehiculos from './views/MisVehiculos';
 import Catalogo from './views/Catalogo';
 import Unauthorized from './views/Unauthorized';
+import Pending from './views/Pending';
 
 function App() {
   return (
     <AuthProvider>
+      <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/pending" element={<Pending />} />
 
           <Route
             path="/admin/dashboard"
@@ -46,6 +50,7 @@ function App() {
           />
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

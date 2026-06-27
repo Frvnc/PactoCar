@@ -14,6 +14,7 @@ const Login = () => {
   const { login } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
@@ -21,7 +22,6 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setCargando(true);
-
     try {
       const { data } = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/login`,
@@ -30,39 +30,60 @@ const Login = () => {
       login(data.token, data.usuario);
       navigate(REDIRECT_POR_ROL[data.usuario.rol_id] || '/');
     } catch (err) {
-      const mensaje = err.response?.data?.error || 'No se pudo conectar al servidor.';
-      setError(mensaje);
+      setError(err.response?.data?.error || 'No se pudo conectar al servidor.');
     } finally {
       setCargando(false);
     }
   };
 
   return (
-    <div>
-      <h2>Ingresar a PactoCar</h2>
+    <div className="page">
+      <div className="auth-header">
+        <Link to="/" className="auth-back">Volver al inicio</Link>
+        <div className="auth-title">Bienvenido</div>
+        <div className="auth-subtitle">Ingresa a tu cuenta de PactoCar</div>
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={cargando}>
-          {cargando ? 'Ingresando...' : 'Iniciar sesión'}
+        {error && <div className="error-msg">{error}</div>}
+
+        <div className="field">
+          <label>Correo electronico</label>
+          <input
+            className="input"
+            type="email"
+            placeholder="tu@correo.cl"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label>Contrasena</label>
+          <div className="password-wrapper">
+            <input
+              className="input"
+              type={showPass ? 'text' : 'password'}
+              placeholder="Minimo 8 caracteres"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button type="button" className="show-pass-btn" onClick={() => setShowPass(!showPass)}>
+              {showPass ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" className="btn" disabled={cargando}>
+          {cargando ? 'Ingresando...' : 'Iniciar sesion'}
         </button>
       </form>
-      <p>
-        ¿No tienes cuenta? <Link to="/register">Regístrate</Link>
-      </p>
+
+      <div className="auth-footer">
+        No tienes cuenta? <Link to="/register" className="link">Registrate</Link>
+      </div>
     </div>
   );
 };
