@@ -91,10 +91,9 @@ docker-compose.override.yml
 # TERRAFORM (para cuando se implemente IaC)
 # ============================================================
 
-infrastructure/.terraform/
-infrastructure/**/.terraform/
-infrastructure/terraform.tfstate
-infrastructure/terraform.tfstate.backup
-infrastructure/*.tfvars
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/.terraform.lock.hcl
 infrastructure/**/*.tfvars
-!infrastructure/*.tfvars.example
+!infrastructure/**/*.tfvars.example
