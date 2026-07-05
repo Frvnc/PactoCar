@@ -135,7 +135,10 @@ const getEstadisticas = async (req, res) => {
         (SELECT COUNT(*) FROM usuarios WHERE rol_id != 1) AS total_usuarios,
         (SELECT COUNT(*) FROM vehiculos WHERE disponible = true) AS total_vehiculos,
         (SELECT COUNT(*) FROM reservas WHERE estado = 'pendiente') AS reservas_pendientes,
-        (SELECT COUNT(*) FROM reservas WHERE estado = 'confirmada') AS reservas_confirmadas
+        (SELECT COUNT(*) FROM reservas WHERE estado = 'confirmada') AS reservas_confirmadas,
+        (SELECT COUNT(*) FROM reservas WHERE estado = 'en_curso') AS reservas_en_curso,
+        (SELECT COUNT(*) FROM reservas WHERE estado = 'finalizada') AS reservas_finalizadas,
+        (SELECT COALESCE(SUM(monto_total), 0) FROM reservas WHERE estado = 'finalizada') AS ingresos_totales
     `);
     return res.status(200).json(resultado.rows[0]);
   } catch (error) {

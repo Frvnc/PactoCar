@@ -115,6 +115,13 @@ const MisVehiculos = () => {
     }
   };
 
+  const MENSAJES_RESERVA = {
+    confirmada: ['Reserva confirmada.', 'success'],
+    cancelada: ['Reserva cancelada.', 'error'],
+    en_curso: ['Arriendo iniciado.', 'success'],
+    finalizada: ['Devolucion registrada.', 'success'],
+  };
+
   const cambiarEstadoReserva = async (reservaId, estado) => {
     try {
       const { data } = await axios.patch(
@@ -126,7 +133,8 @@ const MisVehiculos = () => {
         prev.map((r) => (r.id === reservaId ? { ...r, ...data.reserva } : r))
       );
       setConfirmandoCancelId(null);
-      showToast(estado === 'confirmada' ? 'Reserva confirmada.' : 'Reserva cancelada.', estado === 'confirmada' ? 'success' : 'error');
+      const [mensaje, tipo] = MENSAJES_RESERVA[estado] || ['Reserva actualizada.', 'success'];
+      showToast(mensaje, tipo);
     } catch (err) {
       setError(err.response?.data?.error || 'Error al actualizar la reserva.');
     }
@@ -294,16 +302,11 @@ const MisVehiculos = () => {
 
           {(() => {
             const totalIngresos = reservas
-              .filter((r) => r.estado === 'confirmada')
-              .reduce((sum, r) => {
-                const dias = Math.ceil(
-                  (new Date(r.fecha_fin) - new Date(r.fecha_inicio)) / (1000 * 60 * 60 * 24)
-                );
-                return sum + dias * (r.precio_diario_clp || 0);
-              }, 0);
+              .filter((r) => ['confirmada', 'en_curso', 'finalizada'].includes(r.estado))
+              .reduce((sum, r) => sum + (r.monto_total || 0), 0);
             return totalIngresos > 0 ? (
               <div className="ingresos-total">
-                Total en reservas confirmadas: <strong>${totalIngresos.toLocaleString('es-CL')}</strong>
+                Ingresos comprometidos: <strong>${totalIngresos.toLocaleString('es-CL')}</strong>
               </div>
             ) : null;
           })()}
@@ -325,6 +328,11 @@ const MisVehiculos = () => {
                     {r.conductor_nombre} &middot; {r.conductor_email}<br />
                     {r.fecha_inicio} &rarr; {r.fecha_fin}
                   </div>
+                  {r.monto_total > 0 && (
+                    <div className="reserva-monto">
+                      Total: <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
+                    </div>
+                  )}
                   <span className={`estado estado-${estado}`}>{estado}</span>
 
                   {r.estado === 'pendiente' && confirmandoCancelId !== r.id && (
@@ -346,6 +354,22 @@ const MisVehiculos = () => {
                       </button>
                       <button className="btn-sm" onClick={() => setConfirmandoCancelId(null)}>
                         Volver
+                      </button>
+                    </div>
+                  )}
+
+                  {r.estado === 'confirmada' && (
+                    <div className="reserva-actions">
+                      <button className="btn-sm success" onClick={() => cambiarEstadoReserva(r.id, 'en_curso')}>
+                        Iniciar arriendo
+                      </button>
+                    </div>
+                  )}
+
+                  {r.estado === 'en_curso' && (
+                    <div className="reserva-actions">
+                      <button className="btn-sm success" onClick={() => cambiarEstadoReserva(r.id, 'finalizada')}>
+                        Marcar devolucion
                       </button>
                     </div>
                   )}

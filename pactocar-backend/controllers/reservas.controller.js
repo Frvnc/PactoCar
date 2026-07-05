@@ -1,6 +1,18 @@
 const db = require('../db');
 
-const ESTADOS_VALIDOS = ['pendiente', 'confirmada', 'cancelada'];
+const ESTADOS_VALIDOS = ['pendiente', 'confirmada', 'en_curso', 'finalizada', 'cancelada'];
+
+// Transiciones permitidas del ciclo de vida de una reserva.
+// pendiente -> confirmada -> en_curso -> finalizada  (o cancelada mientras no haya empezado)
+const TRANSICIONES = {
+  pendiente: ['confirmada', 'cancelada'],
+  confirmada: ['en_curso', 'cancelada'],
+  en_curso: ['finalizada'],
+  finalizada: [],
+  cancelada: [],
+};
+
+const MS_POR_DIA = 1000 * 60 * 60 * 24;
 
 const crearReserva = async (req, res) => {
   try {
@@ -23,7 +35,7 @@ const crearReserva = async (req, res) => {
     }
 
     const vehiculo = await db.query(
-      'SELECT id, propietario_id, disponible FROM vehiculos WHERE id = $1',
+      'SELECT id, propietario_id, disponible, precio_diario_clp FROM vehiculos WHERE id = $1',
       [vehiculo_id]
     );
     if (vehiculo.rows.length === 0) {
@@ -44,11 +56,14 @@ const crearReserva = async (req, res) => {
       return res.status(422).json({ error: 'El vehiculo ya tiene una reserva en esas fechas.' });
     }
 
+    const dias = Math.round((new Date(fecha_fin) - new Date(fecha_inicio)) / MS_POR_DIA);
+    const monto_total = dias * vehiculo.rows[0].precio_diario_clp;
+
     const resultado = await db.query(
-      `INSERT INTO reservas (vehiculo_id, conductor_id, fecha_inicio, fecha_fin)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO reservas (vehiculo_id, conductor_id, fecha_inicio, fecha_fin, monto_total)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [vehiculo_id, req.usuario.id, fecha_inicio, fecha_fin]
+      [vehiculo_id, req.usuario.id, fecha_inicio, fecha_fin, monto_total]
     );
 
     return res.status(201).json({ reserva: resultado.rows[0] });
@@ -64,7 +79,7 @@ const getMisReservas = async (req, res) => {
     }
 
     const resultado = await db.query(
-      `SELECT r.id, r.fecha_inicio, r.fecha_fin, r.estado, r.creado_en,
+      `SELECT r.id, r.fecha_inicio, r.fecha_fin, r.monto_total, r.estado, r.creado_en,
               v.marca, v.modelo, v.anio, v.patente, v.precio_diario_clp
        FROM reservas r
        JOIN vehiculos v ON r.vehiculo_id = v.id
@@ -86,7 +101,7 @@ const getReservasVehiculos = async (req, res) => {
     }
 
     const resultado = await db.query(
-      `SELECT r.id, r.fecha_inicio, r.fecha_fin, r.estado, r.creado_en,
+      `SELECT r.id, r.fecha_inicio, r.fecha_fin, r.monto_total, r.estado, r.creado_en,
               v.marca, v.modelo, v.patente, v.precio_diario_clp,
               u.nombre_completo AS conductor_nombre, u.email AS conductor_email
        FROM reservas r
@@ -113,20 +128,22 @@ const actualizarEstadoReserva = async (req, res) => {
       return res.status(422).json({ error: 'Estado no valido.' });
     }
 
+    let reservaActual;
     if (rol_id === 3) {
       if (estado !== 'cancelada') {
         return res.status(403).json({ error: 'Los conductores solo pueden cancelar sus reservas.' });
       }
       const check = await db.query(
-        'SELECT id FROM reservas WHERE id = $1 AND conductor_id = $2',
+        'SELECT id, estado FROM reservas WHERE id = $1 AND conductor_id = $2',
         [id, usuario_id]
       );
       if (check.rows.length === 0) {
         return res.status(404).json({ error: 'Reserva no encontrada.' });
       }
+      reservaActual = check.rows[0];
     } else if (rol_id === 2) {
       const check = await db.query(
-        `SELECT r.id FROM reservas r
+        `SELECT r.id, r.estado FROM reservas r
          JOIN vehiculos v ON r.vehiculo_id = v.id
          WHERE r.id = $1 AND v.propietario_id = $2`,
         [id, usuario_id]
@@ -134,8 +151,16 @@ const actualizarEstadoReserva = async (req, res) => {
       if (check.rows.length === 0) {
         return res.status(404).json({ error: 'Reserva no encontrada.' });
       }
+      reservaActual = check.rows[0];
     } else {
       return res.status(403).json({ error: 'Solo propietarios y conductores pueden gestionar reservas.' });
+    }
+
+    const permitidas = TRANSICIONES[reservaActual.estado] || [];
+    if (!permitidas.includes(estado)) {
+      return res.status(422).json({
+        error: `No se puede cambiar la reserva de "${reservaActual.estado}" a "${estado}".`,
+      });
     }
 
     const resultado = await db.query(

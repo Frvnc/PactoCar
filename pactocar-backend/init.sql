@@ -44,9 +44,13 @@ CREATE TABLE IF NOT EXISTS reservas (
     conductor_id INTEGER NOT NULL REFERENCES usuarios(id),
     fecha_inicio DATE NOT NULL,
     fecha_fin    DATE NOT NULL,
+    monto_total  INTEGER NOT NULL DEFAULT 0,
     estado       VARCHAR(20) NOT NULL DEFAULT 'pendiente',
     creado_en    TIMESTAMP DEFAULT NOW()
 );
+
+-- Para bases de datos existentes que no tienen la columna monto_total
+ALTER TABLE reservas ADD COLUMN IF NOT EXISTS monto_total INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS solicitudes_verificacion (
     id                   SERIAL PRIMARY KEY,

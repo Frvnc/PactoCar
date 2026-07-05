@@ -155,26 +155,48 @@ const AdminDashboard = () => {
           </div>
 
           {/* ── Resumen ──────────────────────────────── */}
-          {seccion === 'resumen' && estadisticas && (
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-value">{estadisticas.total_usuarios}</div>
-                <div className="stat-label">Usuarios</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{estadisticas.total_vehiculos}</div>
-                <div className="stat-label">Vehiculos</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{estadisticas.reservas_pendientes}</div>
-                <div className="stat-label">Reservas pendientes</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{estadisticas.reservas_confirmadas}</div>
-                <div className="stat-label">Reservas confirmadas</div>
-              </div>
-            </div>
-          )}
+          {seccion === 'resumen' && estadisticas && (() => {
+            const p = Number(estadisticas.reservas_pendientes || 0);
+            const c = Number(estadisticas.reservas_confirmadas || 0);
+            const e = Number(estadisticas.reservas_en_curso || 0);
+            const f = Number(estadisticas.reservas_finalizadas || 0);
+            const totalReservas = p + c + e + f;
+            return (
+              <>
+                <div className="stat-ingresos">
+                  <div className="stat-ingresos-label">Ingresos totales</div>
+                  <div className="stat-ingresos-value">
+                    ${Number(estadisticas.ingresos_totales || 0).toLocaleString('es-CL')}
+                  </div>
+                  <div className="stat-ingresos-sub">Reservas finalizadas</div>
+                </div>
+
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <div className="stat-value">{estadisticas.total_usuarios}</div>
+                    <div className="stat-label">Usuarios</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value">{estadisticas.total_vehiculos}</div>
+                    <div className="stat-label">Vehiculos</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value">{totalReservas}</div>
+                    <div className="stat-label">Reservas</div>
+                  </div>
+                </div>
+
+                {totalReservas > 0 && (
+                  <div className="reservas-desglose">
+                    <span><strong>{p}</strong> pendientes</span>
+                    <span><strong>{c}</strong> confirmadas</span>
+                    <span><strong>{e}</strong> en curso</span>
+                    <span><strong>{f}</strong> finalizadas</span>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* ── Verificaciones ────────────────────────── */}
           {seccion === 'verificaciones' && (

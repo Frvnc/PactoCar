@@ -326,6 +326,11 @@ const Catalogo = () => {
                     {r.fecha_inicio} &rarr; {r.fecha_fin}
                     {' '}&middot; Patente {r.patente}
                   </div>
+                  {r.monto_total > 0 && (
+                    <div className="reserva-monto">
+                      Total: <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
+                    </div>
+                  )}
                   <span className={`estado estado-${estado}`}>{estado}</span>
 
                   {r.estado === 'pendiente' && confirmandoCancelId !== r.id && (

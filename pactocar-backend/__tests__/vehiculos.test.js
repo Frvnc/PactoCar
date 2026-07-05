@@ -68,6 +68,24 @@ describe('POST /api/vehiculos', () => {
     expect(res.status).toBe(400);
   });
 
+  test('422 — anio fuera de rango', async () => {
+    const res = await request(app)
+      .post('/api/vehiculos')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ ...payload, anio: 1800 });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/año/i);
+  });
+
+  test('422 — precio diario negativo', async () => {
+    const res = await request(app)
+      .post('/api/vehiculos')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ ...payload, precio_diario_clp: -5000 });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/precio/i);
+  });
+
   test('400 — patente duplicada', async () => {
     const err = new Error('duplicate key');
     err.code = '23505';

@@ -24,11 +24,11 @@ afterEach(() => jest.clearAllMocks());
 describe('POST /api/reservas', () => {
   const payload = { vehiculo_id: 1, fecha_inicio: '2027-01-10', fecha_fin: '2027-01-15' };
 
-  test('201 — conductor crea reserva correctamente', async () => {
+  test('201 — conductor crea reserva correctamente y calcula el monto', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [{ id: 1, propietario_id: 2, disponible: true }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, propietario_id: 2, disponible: true, precio_diario_clp: 20000 }] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 10, vehiculo_id: 1, conductor_id: 3, fecha_inicio: '2027-01-10', fecha_fin: '2027-01-15', estado: 'pendiente' }] });
+      .mockResolvedValueOnce({ rows: [{ id: 10, vehiculo_id: 1, conductor_id: 3, fecha_inicio: '2027-01-10', fecha_fin: '2027-01-15', monto_total: 100000, estado: 'pendiente' }] });
 
     const res = await request(app)
       .post('/api/reservas')
@@ -37,6 +37,9 @@ describe('POST /api/reservas', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.reserva).toHaveProperty('id');
+    // 5 dias (10 -> 15 ene) * 20000 = 100000
+    const insertArgs = db.query.mock.calls[2][1];
+    expect(insertArgs[4]).toBe(100000);
   });
 
   test('403 — propietario no puede crear reservas', async () => {
@@ -164,7 +167,7 @@ describe('GET /api/reservas/mis-vehiculos', () => {
 describe('PATCH /api/reservas/:id', () => {
   test('200 — propietario confirma reserva', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pendiente' }] })
       .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'confirmada' }] });
     const res = await request(app)
       .patch('/api/reservas/1')
@@ -174,9 +177,51 @@ describe('PATCH /api/reservas/:id', () => {
     expect(res.body.reserva.estado).toBe('confirmada');
   });
 
+  test('200 — propietario marca reserva en curso', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'en_curso' }] });
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'en_curso' });
+    expect(res.status).toBe(200);
+    expect(res.body.reserva.estado).toBe('en_curso');
+  });
+
+  test('200 — propietario marca la devolucion (finalizada)', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'en_curso' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'finalizada' }] });
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'finalizada' });
+    expect(res.status).toBe(200);
+    expect(res.body.reserva.estado).toBe('finalizada');
+  });
+
+  test('422 — transicion invalida (finalizar una reserva pendiente)', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pendiente' }] });
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'finalizada' });
+    expect(res.status).toBe(422);
+  });
+
+  test('422 — no se puede cancelar una reserva ya finalizada', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, estado: 'finalizada' }] });
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ estado: 'cancelada' });
+    expect(res.status).toBe(422);
+  });
+
   test('200 — conductor cancela su propia reserva', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pendiente' }] })
       .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'cancelada' }] });
     const res = await request(app)
       .patch('/api/reservas/1')
@@ -256,7 +301,7 @@ describe('Errores de base de datos — 500', () => {
 
   test('PATCH /api/reservas/:id — 500 si DB falla al actualizar', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pendiente' }] })
       .mockRejectedValueOnce(new Error('DB error'));
     const res = await request(app)
       .patch('/api/reservas/1')

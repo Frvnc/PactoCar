@@ -1,5 +1,7 @@
 const db = require('../db');
 
+const ANIO_MINIMO = 1950;
+
 const publicarVehiculo = async (req, res) => {
   try {
     if (req.usuario.rol_id !== 2) {
@@ -10,6 +12,15 @@ const publicarVehiculo = async (req, res) => {
 
     if (!marca || !modelo || !anio || !patente || !precio_diario_clp) {
       return res.status(400).json({ error: 'Todos los campos del vehículo son obligatorios.' });
+    }
+
+    const anioActual = new Date().getFullYear();
+    if (!Number.isInteger(Number(anio)) || anio < ANIO_MINIMO || anio > anioActual + 1) {
+      return res.status(422).json({ error: `El año debe estar entre ${ANIO_MINIMO} y ${anioActual + 1}.` });
+    }
+
+    if (!Number.isInteger(Number(precio_diario_clp)) || precio_diario_clp <= 0) {
+      return res.status(422).json({ error: 'El precio diario debe ser un valor positivo.' });
     }
 
     const resultado = await db.query(

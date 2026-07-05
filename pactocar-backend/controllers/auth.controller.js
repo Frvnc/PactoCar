@@ -4,6 +4,7 @@ const db = require('../db');
 
 const ROLES_VALIDOS = [1, 2, 3];
 const SALT_ROUNDS = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const register = async (req, res) => {
   try {
@@ -11,6 +12,11 @@ const register = async (req, res) => {
 
     if (!nombre_completo || !email || !password || !rol_id) {
       return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(emailNormalizado)) {
+      return res.status(422).json({ error: 'El formato del correo no es válido.' });
     }
 
     if (!ROLES_VALIDOS.includes(Number(rol_id))) {
@@ -23,7 +29,7 @@ const register = async (req, res) => {
 
     const usuarioExistente = await db.query(
       'SELECT id FROM usuarios WHERE email = $1',
-      [email]
+      [emailNormalizado]
     );
     if (usuarioExistente.rows.length > 0) {
       return res.status(400).json({ error: 'El correo ingresado ya está registrado.' });
@@ -37,7 +43,7 @@ const register = async (req, res) => {
       `INSERT INTO usuarios (nombre_completo, email, password_hash, rol_id, verificado)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, nombre_completo, email, rol_id, activo, verificado`,
-      [nombre_completo, email, password_hash, Number(rol_id), verificado]
+      [nombre_completo, emailNormalizado, password_hash, Number(rol_id), verificado]
     );
 
     return res.status(201).json({
@@ -59,7 +65,7 @@ const login = async (req, res) => {
 
     const resultado = await db.query(
       'SELECT * FROM usuarios WHERE email = $1',
-      [email]
+      [email.trim().toLowerCase()]
     );
     if (resultado.rows.length === 0) {
       return res.status(401).json({ error: 'Credenciales inválidas.' });

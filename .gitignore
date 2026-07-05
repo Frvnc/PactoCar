@@ -21,6 +21,9 @@ dist-ssr/
 build/
 *.local
 
+# Cobertura de tests
+coverage/
+
 # Logs
 logs/
 *.log

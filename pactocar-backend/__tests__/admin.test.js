@@ -139,14 +139,18 @@ describe('PATCH /api/admin/usuarios/:id', () => {
 describe('GET /api/admin/estadisticas', () => {
   test('200 — admin obtiene estadisticas del sistema', async () => {
     db.query.mockResolvedValueOnce({
-      rows: [{ total_usuarios: '5', total_vehiculos: '3', reservas_pendientes: '2', reservas_confirmadas: '1' }],
+      rows: [{
+        total_usuarios: '5', total_vehiculos: '3', reservas_pendientes: '2', reservas_confirmadas: '1',
+        reservas_en_curso: '1', reservas_finalizadas: '4', ingresos_totales: '350000',
+      }],
     });
     const res = await request(app)
       .get('/api/admin/estadisticas')
       .set('Authorization', `Bearer ${tokenAdmin}`);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('total_usuarios');
-    expect(res.body).toHaveProperty('total_vehiculos');
+    expect(res.body).toHaveProperty('reservas_finalizadas');
+    expect(res.body).toHaveProperty('ingresos_totales');
   });
 
   test('403 — conductor no puede ver estadisticas', async () => {

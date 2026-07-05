@@ -79,6 +79,30 @@ describe('POST /api/auth/register', () => {
     expect(res.status).toBe(422);
     expect(res.body.error).toMatch(/8 caracteres/i);
   });
+
+  test('422 — rechaza email con formato invalido', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ nombre_completo: 'Ana', email: 'correo-malo', password: 'password123', rol_id: 2 });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/correo/i);
+  });
+
+  test('201 — normaliza el email a minusculas', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, nombre_completo: 'Ana', email: 'ana@test.cl', rol_id: 2, activo: true }] });
+
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ nombre_completo: 'Ana', email: '  ANA@Test.CL ', password: 'password123', rol_id: 2 });
+
+    expect(res.status).toBe(201);
+    // el email usado en la consulta de existencia y el insert debe ir normalizado
+    expect(db.query.mock.calls[0][1][0]).toBe('ana@test.cl');
+    expect(db.query.mock.calls[1][1][1]).toBe('ana@test.cl');
+  });
 });
 
 // ─── Login ───────────────────────────────────────────────────────────────────
