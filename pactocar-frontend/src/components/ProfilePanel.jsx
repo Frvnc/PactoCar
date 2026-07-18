@@ -4,7 +4,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { useDialog } from '../hooks/useDialog';
 import { MODULOS } from '../utils/format';
-import Stars from './Stars';
+import Stars, { Star } from './Stars';
 import PerfilEditor from './PerfilEditor';
 import VerificacionBanner from './VerificacionBanner';
 
@@ -70,6 +70,38 @@ const ProfilePanel = ({ onCerrar }) => {
           <div style={{ marginBottom: '16px' }}>
             <VerificacionBanner embedded />
           </div>
+        )}
+
+        {rep && rep.total > 0 && (
+          <section className="perfil-reputacion" aria-labelledby="perfil-rep-title">
+            <h3 className="modulo-title" id="perfil-rep-title">
+              Lo que dicen de ti ({rep.total})
+            </h3>
+            <div className="calificacion-lista">
+              {rep.calificaciones.map((c) => (
+                <div key={c.id} className="calificacion-item">
+                  <div className="calificacion-cabecera">
+                    <span className="calificacion-autor">Reserva #{c.reserva_id}</span>
+                    <span className="stars-inline" role="img" aria-label={`${c.puntaje} de 5 estrellas`}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          filled={n <= c.puntaje}
+                          size={14}
+                          color={n <= c.puntaje ? 'var(--accent)' : 'var(--border)'}
+                        />
+                      ))}
+                    </span>
+                  </div>
+                  {c.comentario ? (
+                    <blockquote className="calificacion-comentario">{c.comentario}</blockquote>
+                  ) : (
+                    <div className="calificacion-sin-comentario">Sin comentario</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         <PerfilEditor />

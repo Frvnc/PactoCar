@@ -166,7 +166,8 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   font-size: 16px;
   color: var(--text-2);
   line-height: 1.65;
-  margin-bottom: 36px;
+  /* auto a los lados: sin esto el bloque se queda a la izquierda dentro del hero centrado */
+  margin: 0 auto 36px;
   max-width: 400px;
 }
 
@@ -1636,15 +1637,139 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 26px;
-  line-height: 1;
-  color: var(--border);
-  padding: 0;
-  font-family: var(--font);
+  line-height: 0;
+  padding: 2px;
+  border-radius: 6px;
+  transition: transform 0.12s ease;
 }
 
-.star.on {
+.star:hover,
+.star:focus-visible {
+  transform: scale(1.15);
+}
+
+/* ─── CALIFICACIONES ─────────────────────────────────────────────────────── */
+
+.calificar-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.calificar-pregunta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.calificar-etiqueta {
+  margin-left: 10px;
+  align-self: center;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent);
+}
+
+.calificacion-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.calificacion-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.calificacion-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.calificacion-autor {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.calificacion-comentario {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+  font-size: 13px;
+  color: var(--text);
+  font-style: italic;
+}
+
+.calificacion-sin-comentario {
+  font-size: 12px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+.perfil-reputacion {
+  margin-bottom: 16px;
+}
+
+/* ─── TERMINOS Y CONDICIONES ─────────────────────────────────────────────── */
+
+.home-legal {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.home-legal .btn-link {
+  font-size: 13px;
+}
+
+.home-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 20px 0 28px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.panel-ancho {
+  max-width: 640px;
+}
+
+.terminos-intro {
+  font-size: 14px;
+  color: var(--text-2);
+  margin-bottom: 18px;
+}
+
+.terminos-seccion {
+  margin-bottom: 16px;
+}
+
+.terminos-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.terminos-texto {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+  text-align: justify;
 }
 
 /* ─── ACCESIBILIDAD ──────────────────────────────────────────────────────── */

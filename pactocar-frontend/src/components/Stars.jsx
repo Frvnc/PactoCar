@@ -1,12 +1,13 @@
 // Estrellas de reputacion dibujadas con SVG (sin emojis).
-const Star = ({ filled, size }) => (
+// Se exporta suelta porque el selector de puntaje reutiliza la misma forma
+export const Star = ({ filled, size, color = 'var(--accent)' }) => (
   <svg
     viewBox="0 0 24 24"
     width={size}
     height={size}
     aria-hidden="true"
-    fill={filled ? 'var(--accent)' : 'none'}
-    stroke="var(--accent)"
+    fill={filled ? color : 'none'}
+    stroke={color}
     strokeWidth="1.5"
     style={{ flexShrink: 0 }}
   >

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import Icon from '../components/Icon';
+import TerminosModal from '../components/TerminosModal';
 
 const RUTAS_ROL = { 1: '/admin/dashboard', 2: '/mis-vehiculos', 3: '/catalogo' };
 const ROLES = { 1: 'Administrador', 2: 'Propietario', 3: 'Conductor' };
@@ -46,6 +47,7 @@ const Home = () => {
   const { auth, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [totalVehiculos, setTotalVehiculos] = useState(null);
+  const [verTerminos, setVerTerminos] = useState(false);
 
   const logueado = !!auth.token;
   const rol = auth.usuario?.rol_id;
@@ -169,9 +171,25 @@ const Home = () => {
 
           <div style={{ textAlign: 'center', paddingBottom: '32px' }}>
             <Link to="/register" className="btn home-cta">Comenzar ahora</Link>
+            <p className="home-legal">
+              Al crear una cuenta aceptas los{' '}
+              <button type="button" className="btn-link" onClick={() => setVerTerminos(true)}>
+                terminos y condiciones
+              </button>
+              .
+            </p>
           </div>
         </>
       )}
+
+      <footer className="home-footer">
+        <span>PactoCar - Car sharing entre particulares</span>
+        <button type="button" className="btn-link" onClick={() => setVerTerminos(true)}>
+          Terminos y condiciones
+        </button>
+      </footer>
+
+      {verTerminos && <TerminosModal onCerrar={() => setVerTerminos(false)} />}
     </div>
   );
 };

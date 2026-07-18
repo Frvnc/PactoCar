@@ -4,16 +4,30 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../hooks/useDialog';
 import { fmtFecha, fmtHora, ESTADO_LABEL, MODULOS } from '../utils/format';
+import { Star } from './Stars';
 
 const { pagos: PAGOS, contratos: CONTRATOS, reputacion: REPUTACION, chat: CHAT } = MODULOS;
 
 const ESTADOS_CON_CONTRATO = ['confirmada', 'en_curso', 'finalizada'];
 const clp = (n) => `$${Number(n || 0).toLocaleString('es-CL')}`;
 
+// Que significa cada puntaje, para que la nota no sea solo un numero de estrellas
+const ETIQUETA_PUNTAJE = {
+  1: 'Muy mala',
+  2: 'Mala',
+  3: 'Regular',
+  4: 'Buena',
+  5: 'Excelente',
+};
+
 const ReservaModal = ({ reserva, onCerrar }) => {
   const { auth } = useContext(AuthContext);
   const { showToast } = useToast();
   const esConductor = auth.usuario?.rol_id === 3;
+  // Segun quien mire la reserva, la otra parte es el propietario o el conductor
+  const otraParte = esConductor
+    ? reserva.propietario_nombre || 'el propietario'
+    : reserva.conductor_nombre || 'el conductor';
   const rid = reserva.id;
   const token = auth.token;
   const miId = auth.usuario?.id;
@@ -24,6 +38,7 @@ const ReservaModal = ({ reserva, onCerrar }) => {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [puntaje, setPuntaje] = useState(5);
+  const [hover, setHover] = useState(0);
   const [comentario, setComentario] = useState('');
   const [cargando, setCargando] = useState(true);
   const [ocupado, setOcupado] = useState(false);
@@ -330,47 +345,81 @@ const ReservaModal = ({ reserva, onCerrar }) => {
             <section className="modulo-section" aria-labelledby="sec-reputacion">
               <h3 className="modulo-title" id="sec-reputacion">Reputacion</h3>
               {calificaciones.length > 0 && (
-                <div className="modulo-info">
+                <div className="calificacion-lista">
                   {calificaciones.map((c) => (
-                    <div key={c.id}>
-                      {c.autor_id === miId ? 'Tu calificacion' : 'Te calificaron'}:{' '}
-                      <span aria-hidden="true">{'*'.repeat(c.puntaje)}</span>
-                      <span className="sr-only">{c.puntaje} de 5</span> ({c.puntaje}/5)
-                      {c.comentario ? ` - ${c.comentario}` : ''}
+                    <div key={c.id} className="calificacion-item">
+                      <div className="calificacion-cabecera">
+                        <span className="calificacion-autor">
+                          {c.autor_id === miId ? `Tu calificacion a ${otraParte}` : `${otraParte} te califico`}
+                        </span>
+                        <span className="stars-inline" role="img" aria-label={`${c.puntaje} de 5 estrellas`}>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              filled={n <= c.puntaje}
+                              size={14}
+                              color={n <= c.puntaje ? 'var(--accent)' : 'var(--border)'}
+                            />
+                          ))}
+                          <span className="stars-count">{ETIQUETA_PUNTAJE[c.puntaje]}</span>
+                        </span>
+                      </div>
+                      {c.comentario ? (
+                        <blockquote className="calificacion-comentario">{c.comentario}</blockquote>
+                      ) : (
+                        <div className="calificacion-sin-comentario">Sin comentario</div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
               {puedeCalificar ? (
-                <>
-                  <div className="stars" role="radiogroup" aria-label="Puntaje de 1 a 5 estrellas">
+                <div className="calificar-box">
+                  <div className="calificar-pregunta">
+                    Como fue tu experiencia con {otraParte}?
+                  </div>
+                  <div
+                    className="stars"
+                    role="radiogroup"
+                    aria-label="Puntaje de 1 a 5 estrellas"
+                    onMouseLeave={() => setHover(0)}
+                  >
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button
                         key={n}
                         type="button"
                         role="radio"
                         aria-checked={n === puntaje}
-                        aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
-                        className={`star${n <= puntaje ? ' on' : ''}`}
+                        aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}: ${ETIQUETA_PUNTAJE[n]}`}
+                        className="star"
+                        onMouseEnter={() => setHover(n)}
+                        onFocus={() => setHover(n)}
                         onClick={() => setPuntaje(n)}
                       >
-                        <span aria-hidden="true">*</span>
+                        <Star
+                          filled={n <= (hover || puntaje)}
+                          size={30}
+                          color={n <= (hover || puntaje) ? 'var(--accent)' : 'var(--border)'}
+                        />
                       </button>
                     ))}
+                    <span className="calificar-etiqueta">{ETIQUETA_PUNTAJE[hover || puntaje]}</span>
                   </div>
                   <label htmlFor="comentario" className="sr-only">Comentario de la calificacion</label>
-                  <input
+                  <textarea
                     id="comentario"
                     className="input"
-                    style={{ marginBottom: '8px' }}
-                    placeholder="Comentario (opcional)"
+                    rows={2}
+                    style={{ marginBottom: '8px', resize: 'vertical' }}
+                    placeholder={`Cuenta como fue el trato con ${otraParte} (opcional)`}
                     value={comentario}
+                    maxLength={500}
                     onChange={(e) => setComentario(e.target.value)}
                   />
                   <button className="btn-sm success" disabled={ocupado} onClick={calificar}>
                     Enviar calificacion
                   </button>
-                </>
+                </div>
               ) : reserva.estado !== 'finalizada' ? (
                 <div className="modulo-info">Podras calificar cuando la reserva finalice.</div>
               ) : null}
