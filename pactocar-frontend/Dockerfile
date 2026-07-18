@@ -1,5 +1,6 @@
 # Stage 1 — Build
-FROM node:22.11.0-alpine AS builder
+# Vite exige Node 22.12 o superior, por eso no se puede bajar de esta version
+FROM node:22.23.1-alpine AS builder
 
 WORKDIR /app
 
