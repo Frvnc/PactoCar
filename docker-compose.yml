@@ -69,6 +69,8 @@ services:
       - DB_PORT=5432
       - DB_NAME=pactocar_db
       - JWT_SECRET=${JWT_SECRET}
+      # Comunicacion inter-modulo: contratos pide a pagos los importes cobrados
+      - PAGOS_URL=http://pagos:3005
     depends_on:
       db:
         condition: service_healthy

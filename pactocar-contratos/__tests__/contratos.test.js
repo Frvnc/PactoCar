@@ -34,6 +34,16 @@ const reservaBase = {
 
 afterEach(() => jest.clearAllMocks());
 
+// pagos-service se sustituye por un doble: los tests no salen a la red
+beforeEach(() => {
+  global.fetch = jest.fn().mockResolvedValue({
+    status: 200,
+    json: async () => ({
+      pago: { monto: 100000, garantia: 20000, comision: 10000, metodo: 'tarjeta_credito' },
+    }),
+  });
+});
+
 // ─── POST /api/contratos ─────────────────────────────────────────────────────
 
 describe('POST /api/contratos', () => {
@@ -52,6 +62,70 @@ describe('POST /api/contratos', () => {
     expect(res.body.contrato).toHaveProperty('id');
     // el PDF no debe viajar en el cuerpo del INSERT devuelto
     expect(res.body.contrato).not.toHaveProperty('pdf');
+  });
+
+  test('201 — pide a pagos-service los importes reales y los pasa al PDF', async () => {
+    const { generarContratoPdf } = require('../utils/contrato-pdf');
+    db.query
+      .mockResolvedValueOnce({ rows: [reservaBase] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/contratos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const [url, opciones] = global.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:3005/api/pagos/reserva/10');
+    // El token se reenvia para que pagos valide la identidad de quien pregunta
+    expect(opciones.headers.Authorization).toBe(`Bearer ${tokenConductor}`);
+
+    // Los importes que llegan de pagos son los que acaban en el documento
+    const datosPdf = generarContratoPdf.mock.calls[0][0];
+    expect(datosPdf.garantia).toBe(20000);
+    expect(datosPdf.comision).toBe(10000);
+    expect(datosPdf.metodo).toBe('tarjeta_credito');
+  });
+
+  test('201 — el contrato se emite igual si pagos-service no responde', async () => {
+    const { generarContratoPdf } = require('../utils/contrato-pdf');
+    global.fetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    db.query
+      .mockResolvedValueOnce({ rows: [reservaBase] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/contratos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    // El contrato es el resultado principal: la caida de pagos no puede impedirlo
+    expect(res.status).toBe(201);
+    const datosPdf = generarContratoPdf.mock.calls[0][0];
+    expect(datosPdf.garantia).toBeUndefined();
+    expect(datosPdf.comision).toBeUndefined();
+  });
+
+  test('201 — si la reserva no tiene pago registrado, el PDF cae al calculo local', async () => {
+    const { generarContratoPdf } = require('../utils/contrato-pdf');
+    global.fetch.mockResolvedValueOnce({ status: 200, json: async () => ({ pago: null }) });
+    db.query
+      .mockResolvedValueOnce({ rows: [reservaBase] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/contratos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+    expect(generarContratoPdf.mock.calls[0][0].garantia).toBeUndefined();
   });
 
   test('201 — el propietario tambien puede generar el contrato', async () => {

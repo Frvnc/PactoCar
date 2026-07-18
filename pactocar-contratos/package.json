@@ -14,7 +14,8 @@
     "collectCoverageFrom": [
       "controllers/**/*.js",
       "middlewares/**/*.js",
-      "utils/**/*.js"
+      "utils/**/*.js",
+      "services/**/*.js"
     ]
   },
   "license": "ISC",

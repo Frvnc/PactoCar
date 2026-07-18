@@ -127,9 +127,10 @@ resource "aws_ecs_task_definition" "modulo" {
       protocol      = "tcp"
     }]
 
-    # Al modulo de pagos se le inyecta ademas la URL de contratos-service: cuando
-    # un pago se completa lo llama por HTTP para emitir el contrato. La llamada
-    # sale por el ALB, que enruta /api/contratos al servicio correspondiente
+    # A pagos y a contratos se les inyecta la URL del otro: pagos llama a contratos
+    # al completarse un cobro para emitir el contrato, y contratos llama a pagos al
+    # emitirlo para incluir los importes reales. Ambas llamadas salen por el ALB,
+    # que enruta por path al servicio correspondiente
     environment = concat(
       [
         { name = "PORT", value = tostring(each.value.puerto) },
@@ -143,6 +144,9 @@ resource "aws_ecs_task_definition" "modulo" {
       ],
       each.key == "pagos" ? [
         { name = "CONTRATOS_URL", value = "http://${aws_lb.main.dns_name}" }
+      ] : [],
+      each.key == "contratos" ? [
+        { name = "PAGOS_URL", value = "http://${aws_lb.main.dns_name}" }
       ] : []
     )
 

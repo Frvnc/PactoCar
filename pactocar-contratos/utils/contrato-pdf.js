@@ -62,7 +62,13 @@ const generarContratoPdf = (datos) =>
 
       const fechaEmision = soloFecha(new Date());
       const folio = folioDe(datos.reserva_id, new Date());
-      const garantia = Math.round(Number(datos.monto || 0) * GARANTIA_PORCENTAJE);
+
+      // La garantia la informa pagos-service con el importe realmente retenido
+      // Si no respondio, se cae al calculo local para poder emitir el contrato igual
+      const garantiaInformada = datos.garantia !== undefined && datos.garantia !== null;
+      const garantia = garantiaInformada
+        ? Number(datos.garantia)
+        : Math.round(Number(datos.monto || 0) * GARANTIA_PORCENTAJE);
 
       encabezado(doc, folio, fechaEmision);
 
@@ -83,6 +89,18 @@ const generarContratoPdf = (datos) =>
       filaDato(doc, 'Hasta', soloFecha(datos.fecha_fin));
       filaDato(doc, 'Monto del arriendo', formatoCLP(datos.monto));
       filaDato(doc, 'Garantia en custodia', `${formatoCLP(garantia)} (retenida en escrow)`);
+      if (datos.comision !== undefined && datos.comision !== null) {
+        filaDato(doc, 'Comision de la plataforma', formatoCLP(datos.comision));
+      }
+      if (datos.metodo) {
+        filaDato(doc, 'Medio de pago', String(datos.metodo).replace(/_/g, ' '));
+      }
+      if (garantiaInformada) {
+        doc.fillColor(TENUE).font('Helvetica').fontSize(8)
+          .text('Importes confirmados por el modulo de pagos.', 220, doc.y);
+        doc.moveDown(0.4);
+        doc.fillColor('#0f172a').font('Helvetica').fontSize(10);
+      }
 
       tituloSeccion(doc, 'Condiciones');
       doc.fillColor('#0f172a').font('Helvetica').fontSize(9);

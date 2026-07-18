@@ -68,3 +68,7 @@ docker-compose.override.yml
 **/.terraform.lock.hcl
 infrastructure/**/*.tfvars
 !infrastructure/**/*.tfvars.example
+# Planes guardados con plan -out: binarios y con datos sensibles dentro
+tfplan
+**/tfplan
+*.tfplan

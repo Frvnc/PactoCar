@@ -1,5 +1,6 @@
 const db = require('../db');
 const { generarContratoPdf } = require('../utils/contrato-pdf');
+const { obtenerPago } = require('../services/pagos.client');
 
 // Solo se genera contrato una vez que la reserva quedo confirmada (o mas avanzada).
 const ESTADOS_CON_CONTRATO = ['confirmada', 'en_curso', 'finalizada'];
@@ -44,6 +45,11 @@ const generarContrato = async (req, res) => {
     }
 
     const vehiculo = `${r.marca} ${r.modelo} ${r.anio} (${r.patente})`;
+
+    // Se piden a pagos-service los importes efectivamente cobrados, para no duplicar
+    // aqui el calculo de la garantia y la comision
+    const pago = await obtenerPago(reserva_id, req.headers.authorization);
+
     const pdf = await generarContratoPdf({
       reserva_id: r.id,
       arrendador: r.arrendador,
@@ -52,6 +58,9 @@ const generarContrato = async (req, res) => {
       monto: r.monto_total,
       fecha_inicio: r.fecha_inicio,
       fecha_fin: r.fecha_fin,
+      garantia: pago ? pago.garantia : undefined,
+      comision: pago ? pago.comision : undefined,
+      metodo: pago ? pago.metodo : undefined,
     });
 
     const resultado = await db.query(
