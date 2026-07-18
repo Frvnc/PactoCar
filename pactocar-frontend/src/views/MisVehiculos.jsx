@@ -5,6 +5,8 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import VerificacionBanner from '../components/VerificacionBanner';
 import ProfilePanel from '../components/ProfilePanel';
+import ReservaModal from '../components/ReservaModal';
+import { fmtFecha, diasEntre, ESTADO_LABEL, MODULOS } from '../utils/format';
 
 const FORM_VACIO = { marca: '', modelo: '', anio: '', patente: '', precio_diario_clp: '', imagen_url: '' };
 
@@ -28,6 +30,8 @@ const MisVehiculos = () => {
   const [confirmandoCancelId, setConfirmandoCancelId] = useState(null);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [seccion, setSeccion] = useState('vehiculos');
+  const [reservaGestion, setReservaGestion] = useState(null);
+  const [chatMap, setChatMap] = useState({});
 
   const { showToast } = useToast();
   const headers = { Authorization: `Bearer ${auth.token}` };
@@ -43,6 +47,13 @@ const MisVehiculos = () => {
         ]);
         setVehiculos(resVeh.data);
         setReservas(resRes.data);
+
+        try {
+          const { data } = await axios.get(`${MODULOS.chat}/api/chat`, { headers });
+          const cmap = {};
+          data.forEach((c) => { cmap[c.reserva_id] = c.no_leidos; });
+          setChatMap(cmap);
+        } catch { /* chat opcional */ }
       } catch {
         setError('No se pudo cargar la informacion.');
       } finally {
@@ -147,12 +158,13 @@ const MisVehiculos = () => {
   return (
     <div className="page">
       {panelAbierto && <ProfilePanel onCerrar={() => setPanelAbierto(false)} />}
+      {reservaGestion && <ReservaModal reserva={reservaGestion} onCerrar={() => setReservaGestion(null)} />}
 
       <div className="page-header">
         <Link to="/" className="page-brand">PactoCar</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span className="badge">Propietario</span>
-          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil">
+          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil" aria-label="Abrir mi perfil">
             {inicial}
           </button>
         </div>
@@ -321,19 +333,25 @@ const MisVehiculos = () => {
           ) : (
             reservas.map((r) => {
               const estado = getEstado(r);
+              const dias = diasEntre(r.fecha_inicio, r.fecha_fin);
               return (
                 <div key={r.id} className={`reserva-card ${estado}`}>
-                  <div className="reserva-title">{r.marca} {r.modelo} &middot; {r.patente}</div>
-                  <div className="reserva-meta">
-                    {r.conductor_nombre} &middot; {r.conductor_email}<br />
-                    {r.fecha_inicio} &rarr; {r.fecha_fin}
+                  <div className="reserva-card-head">
+                    <div className="reserva-title">{r.marca} {r.modelo}</div>
+                    <span className={`estado estado-${estado}`}>{ESTADO_LABEL[estado] || estado}</span>
                   </div>
+                  <div className="reserva-fechas">
+                    {fmtFecha(r.fecha_inicio)} <span className="flecha">&rarr;</span> {fmtFecha(r.fecha_fin)}
+                  </div>
+                  <div className="reserva-sub">
+                    Patente <span className="patente">{r.patente}</span> &middot; {dias} dia{dias !== 1 ? 's' : ''}
+                  </div>
+                  <div className="reserva-conductor">{r.conductor_nombre} &middot; {r.conductor_email}</div>
                   {r.monto_total > 0 && (
                     <div className="reserva-monto">
-                      Total: <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
+                      Total <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
                     </div>
                   )}
-                  <span className={`estado estado-${estado}`}>{estado}</span>
 
                   {r.estado === 'pendiente' && confirmandoCancelId !== r.id && (
                     <div className="reserva-actions">
@@ -370,6 +388,15 @@ const MisVehiculos = () => {
                     <div className="reserva-actions">
                       <button className="btn-sm success" onClick={() => cambiarEstadoReserva(r.id, 'finalizada')}>
                         Marcar devolucion
+                      </button>
+                    </div>
+                  )}
+
+                  {r.estado !== 'cancelada' && (
+                    <div className="reserva-actions">
+                      <button className="btn-sm" onClick={() => setReservaGestion(r)}>
+                        Gestionar reserva
+                        {chatMap[r.id] > 0 && <span className="tab-badge" style={{ marginLeft: '6px' }}>{chatMap[r.id]}</span>}
                       </button>
                     </div>
                   )}

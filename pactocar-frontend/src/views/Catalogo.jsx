@@ -5,6 +5,9 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import VerificacionBanner from '../components/VerificacionBanner';
 import ProfilePanel from '../components/ProfilePanel';
+import ReservaModal from '../components/ReservaModal';
+import Stars from '../components/Stars';
+import { fmtFecha, diasEntre, ESTADO_LABEL, MODULOS } from '../utils/format';
 
 const hoy = new Date().toISOString().split('T')[0];
 
@@ -29,6 +32,9 @@ const Catalogo = () => {
   const [confirmandoCancelId, setConfirmandoCancelId] = useState(null);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [seccion, setSeccion] = useState('catalogo');
+  const [reservaGestion, setReservaGestion] = useState(null);
+  const [repMap, setRepMap] = useState({});
+  const [chatMap, setChatMap] = useState({});
 
   const headers = { Authorization: `Bearer ${auth.token}` };
   const noVerificado = auth.usuario?.verificado === false;
@@ -43,6 +49,25 @@ const Catalogo = () => {
         ]);
         setVehiculos(resCat.data);
         setReservas(resRes.data);
+
+        const ids = [...new Set(resCat.data.map((v) => v.propietario_id).filter(Boolean))];
+        if (ids.length) {
+          try {
+            const { data } = await axios.get(
+              `${MODULOS.reputacion}/api/reputacion/resumen?usuarios=${ids.join(',')}`,
+              { headers }
+            );
+            const map = {};
+            data.forEach((rep) => { map[rep.usuario_id] = rep; });
+            setRepMap(map);
+          } catch { /* reputacion opcional */ }
+        }
+        try {
+          const { data } = await axios.get(`${MODULOS.chat}/api/chat`, { headers });
+          const cmap = {};
+          data.forEach((c) => { cmap[c.reserva_id] = c.no_leidos; });
+          setChatMap(cmap);
+        } catch { /* chat opcional */ }
       } catch {
         setError('No se pudo cargar el catalogo.');
       } finally {
@@ -129,12 +154,13 @@ const Catalogo = () => {
   return (
     <div className="page">
       {panelAbierto && <ProfilePanel onCerrar={() => setPanelAbierto(false)} />}
+      {reservaGestion && <ReservaModal reserva={reservaGestion} onCerrar={() => setReservaGestion(null)} />}
 
       <div className="page-header">
         <Link to="/" className="page-brand">PactoCar</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span className="badge">Conductor</span>
-          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil">
+          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil" aria-label="Abrir mi perfil">
             {inicial}
           </button>
         </div>
@@ -235,12 +261,17 @@ const Catalogo = () => {
                     </div>
                   )}
                   <div className="vehicle-name">{v.marca} {v.modelo}</div>
-                  <div className="vehicle-meta">
-                    {v.anio} &middot; Patente {v.patente}
-                    {v.propietario_nombre && (
-                      <span className="propietario-tag"> &middot; {v.propietario_nombre}</span>
-                    )}
-                  </div>
+                  <div className="vehicle-meta">{v.anio} &middot; Patente {v.patente}</div>
+                  {v.propietario_nombre && (
+                    <div className="propietario-rep">
+                      <span className="propietario-tag">{v.propietario_nombre}</span>
+                      <Stars
+                        value={repMap[v.propietario_id]?.promedio || 0}
+                        count={repMap[v.propietario_id]?.total || 0}
+                        size={13}
+                      />
+                    </div>
+                  )}
                   <div className="vehicle-footer">
                     <div className="vehicle-price">
                       ${v.precio_diario_clp.toLocaleString('es-CL')}
@@ -319,19 +350,33 @@ const Catalogo = () => {
           ) : (
             reservas.map((r) => {
               const estado = getEstado(r);
+              const dias = diasEntre(r.fecha_inicio, r.fecha_fin);
               return (
                 <div key={r.id} className={`reserva-card ${estado}`}>
-                  <div className="reserva-title">{r.marca} {r.modelo} ({r.anio})</div>
-                  <div className="reserva-meta">
-                    {r.fecha_inicio} &rarr; {r.fecha_fin}
-                    {' '}&middot; Patente {r.patente}
+                  <div className="reserva-card-head">
+                    <div className="reserva-title">{r.marca} {r.modelo}</div>
+                    <span className={`estado estado-${estado}`}>{ESTADO_LABEL[estado] || estado}</span>
+                  </div>
+                  <div className="reserva-fechas">
+                    {fmtFecha(r.fecha_inicio)} <span className="flecha">&rarr;</span> {fmtFecha(r.fecha_fin)}
+                  </div>
+                  <div className="reserva-sub">
+                    {r.anio} &middot; Patente <span className="patente">{r.patente}</span> &middot; {dias} dia{dias !== 1 ? 's' : ''}
                   </div>
                   {r.monto_total > 0 && (
                     <div className="reserva-monto">
-                      Total: <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
+                      Total <strong>${Number(r.monto_total).toLocaleString('es-CL')}</strong>
                     </div>
                   )}
-                  <span className={`estado estado-${estado}`}>{estado}</span>
+
+                  {r.estado !== 'cancelada' && (
+                    <div className="reserva-actions">
+                      <button className="btn-sm" onClick={() => setReservaGestion(r)}>
+                        Gestionar reserva
+                        {chatMap[r.id] > 0 && <span className="tab-badge" style={{ marginLeft: '6px' }}>{chatMap[r.id]}</span>}
+                      </button>
+                    </div>
+                  )}
 
                   {r.estado === 'pendiente' && confirmandoCancelId !== r.id && (
                     <div className="reserva-actions">

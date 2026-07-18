@@ -113,7 +113,7 @@ const AdminDashboard = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {totalPendientes > 0 && <span className="badge-alert">{totalPendientes}</span>}
           <span className="badge">Admin</span>
-          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil">
+          <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil" aria-label="Abrir mi perfil">
             {inicial}
           </button>
         </div>

@@ -160,6 +160,37 @@ describe('GET /api/reputacion/usuario/:usuarioId', () => {
   });
 });
 
+// ─── GET /api/reputacion/resumen ─────────────────────────────────────────────
+
+describe('GET /api/reputacion/resumen', () => {
+  test('200 — devuelve promedio y total de varios usuarios', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ usuario_id: 2, total: 3, promedio: '4.67' }, { usuario_id: 4, total: 1, promedio: '5.00' }] });
+    const res = await request(app)
+      .get('/api/reputacion/resumen?usuarios=2,4')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].promedio).toBe(4.67);
+  });
+
+  test('200 — sin ids devuelve arreglo vacio (sin tocar la DB)', async () => {
+    const res = await request(app)
+      .get('/api/reputacion/resumen')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+    expect(db.query).not.toHaveBeenCalled();
+  });
+
+  test('500 — si la DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .get('/api/reputacion/resumen?usuarios=2')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(500);
+  });
+});
+
 // ─── GET /api/reputacion/mias ────────────────────────────────────────────────
 
 describe('GET /api/reputacion/mias', () => {

@@ -83,6 +83,40 @@ const getReputacionUsuario = async (req, res) => {
   }
 };
 
+// GET /api/reputacion/resumen?usuarios=1,2,3 - promedio y total de varios usuarios de una vez.
+// Lo usa el catalogo para mostrar la reputacion de cada propietario sin N peticiones.
+const getResumen = async (req, res) => {
+  try {
+    const raw = req.query.usuarios || '';
+    const ids = raw
+      .split(',')
+      .map((x) => Number(x))
+      .filter((n) => Number.isInteger(n) && n > 0);
+
+    if (ids.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const resultado = await db.query(
+      `SELECT destinatario_id AS usuario_id, COUNT(*)::int AS total,
+              ROUND(AVG(puntaje)::numeric, 2) AS promedio
+       FROM calificaciones
+       WHERE destinatario_id = ANY($1)
+       GROUP BY destinatario_id`,
+      [ids]
+    );
+
+    const data = resultado.rows.map((row) => ({
+      usuario_id: row.usuario_id,
+      total: row.total,
+      promedio: Number(row.promedio),
+    }));
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ error: 'Error al obtener el resumen de reputacion.' });
+  }
+};
+
 // GET /api/reputacion/mias - calificaciones que el usuario autenticado ha emitido.
 const getMisCalificaciones = async (req, res) => {
   try {
@@ -116,6 +150,7 @@ const getCalificacionesReserva = async (req, res) => {
 module.exports = {
   crearCalificacion,
   getReputacionUsuario,
+  getResumen,
   getMisCalificaciones,
   getCalificacionesReserva,
 };

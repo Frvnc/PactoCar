@@ -21,7 +21,7 @@ describe('POST /api/pagos', () => {
     db.query
       .mockResolvedValueOnce({ rows: [{ id: 10, conductor_id: 3, monto_total: 100000, estado: 'confirmada' }] })
       .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10, monto: 100000, garantia: 20000, metodo: 'tarjeta_credito', estado_garantia: 'retenida' }] });
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10, monto: 100000, garantia: 20000, comision: 10000, metodo: 'tarjeta_credito', estado: 'pagado', estado_garantia: 'retenida' }] });
 
     const res = await request(app)
       .post('/api/pagos')
@@ -30,9 +30,10 @@ describe('POST /api/pagos', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.pago).toHaveProperty('id');
-    // garantia = 20% de 100000 = 20000
+    // garantia = 20% de 100000 = 20000 ; comision = 10% = 10000
     const insertArgs = db.query.mock.calls[2][1];
     expect(insertArgs[2]).toBe(20000);
+    expect(insertArgs[3]).toBe(10000);
   });
 
   test('403 — propietario no puede pagar', async () => {
@@ -212,6 +213,62 @@ describe('PATCH /api/pagos/:id/liberar-garantia', () => {
     const res = await request(app)
       .patch('/api/pagos/1/liberar-garantia')
       .set('Authorization', `Bearer ${tokenPropietario}`);
+    expect(res.status).toBe(500);
+  });
+});
+
+// ─── PATCH /api/pagos/:id/reembolsar ─────────────────────────────────────────
+
+describe('PATCH /api/pagos/:id/reembolsar', () => {
+  test('200 — reembolsa el pago de una reserva cancelada', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pagado', estado_reserva: 'cancelada', conductor_id: 3, propietario_id: 2 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'reembolsado', estado_garantia: 'liberada' }] });
+    const res = await request(app)
+      .patch('/api/pagos/1/reembolsar')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(200);
+    expect(res.body.pago.estado).toBe('reembolsado');
+  });
+
+  test('403 — un tercero no puede reembolsar', async () => {
+    const tokenOtro = jwt.sign({ id: 8, rol_id: 3, verificado: true }, process.env.JWT_SECRET);
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pagado', estado_reserva: 'cancelada', conductor_id: 3, propietario_id: 2 }] });
+    const res = await request(app)
+      .patch('/api/pagos/1/reembolsar')
+      .set('Authorization', `Bearer ${tokenOtro}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('404 — pago no encontrado', async () => {
+    db.query.mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .patch('/api/pagos/99/reembolsar')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(404);
+  });
+
+  test('422 — la reserva no esta cancelada', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, estado: 'pagado', estado_reserva: 'finalizada', conductor_id: 3, propietario_id: 2 }] });
+    const res = await request(app)
+      .patch('/api/pagos/1/reembolsar')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(422);
+  });
+
+  test('409 — el pago ya fue reembolsado', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1, estado: 'reembolsado', estado_reserva: 'cancelada', conductor_id: 3, propietario_id: 2 }] });
+    const res = await request(app)
+      .patch('/api/pagos/1/reembolsar')
+      .set('Authorization', `Bearer ${tokenConductor}`);
+    expect(res.status).toBe(409);
+  });
+
+  test('500 — si la DB falla', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB error'));
+    const res = await request(app)
+      .patch('/api/pagos/1/reembolsar')
+      .set('Authorization', `Bearer ${tokenConductor}`);
     expect(res.status).toBe(500);
   });
 });

@@ -807,10 +807,64 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 .reserva-card.cancelada { border-left-color: var(--text-muted); opacity: 0.6; }
 
 .reserva-title {
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  text-transform: capitalize;
+  letter-spacing: -0.2px;
+}
+
+/* Cabecera de la tarjeta: titulo a la izquierda, estado a la derecha */
+.reserva-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.reserva-card-head .reserva-title {
+  margin-bottom: 0;
+}
+
+.reserva-card-head .estado {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Rango de fechas destacado */
+.reserva-fechas {
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
   margin-bottom: 4px;
+}
+
+.reserva-fechas .flecha {
+  color: var(--accent);
+  margin: 0 6px;
+  font-weight: 700;
+}
+
+/* Linea secundaria: anio, patente y duracion */
+.reserva-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.patente {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.reserva-conductor {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 10px;
 }
 
 .reserva-meta {
@@ -1491,4 +1545,217 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 .propietario-tag {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* ─── PANEL DE MODULOS (gestionar reserva) ───────────────────────────────── */
+.modulo-section {
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.modulo-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+.modulo-info {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.modulo-section .btn-sm {
+  margin-right: 8px;
+}
+
+/* ─── CHAT ───────────────────────────────────────────────────────────────── */
+.chat-msgs {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 10px;
+}
+
+.chat-msg {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.chat-msg.mio {
+  align-self: flex-end;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.chat-form .input {
+  flex: 1;
+}
+
+.chat-form .btn-sm {
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+/* ─── ESTRELLAS (reputacion) ─────────────────────────────────────────────── */
+.stars {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--border);
+  padding: 0;
+  font-family: var(--font);
+}
+
+.star.on {
+  color: var(--accent);
+}
+
+/* ─── ACCESIBILIDAD ──────────────────────────────────────────────────────── */
+/* Texto solo para lectores de pantalla (oculto visualmente) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Foco visible y consistente para navegacion por teclado */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── RECIBO DE PAGO ──────────────────────────────────────────────────────── */
+.recibo {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.recibo-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  color: var(--text-2);
+}
+
+.recibo-fila.total {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 8px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.recibo-estado {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ─── ESTRELLAS INLINE (reputacion) ──────────────────────────────────────── */
+.stars-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.stars-count {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.propietario-rep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+/* ─── PREVIEW DEL CONTRATO PDF ───────────────────────────────────────────── */
+.pdf-preview {
+  width: 100%;
+  height: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-top: 10px;
+  background: #ffffff;
+}
+
+/* ─── CABECERA DE MENSAJE DE CHAT ────────────────────────────────────────── */
+.chat-msg-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 3px;
+}
+
+.chat-autor {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+
+.chat-hora {
+  font-size: 10px;
+  color: var(--text-muted);
 }

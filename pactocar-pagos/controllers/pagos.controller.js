@@ -2,6 +2,8 @@ const db = require('../db');
 
 // Porcentaje del monto del arriendo que se retiene como garantia (escrow).
 const GARANTIA_PORCENTAJE = 0.2;
+// Comision de la plataforma sobre el arriendo (se descuenta al propietario).
+const COMISION_PORCENTAJE = 0.1;
 
 // POST /api/pagos - el conductor paga una reserva confirmada.
 // Comunicacion inter-modulo: lee la reserva del core para obtener el monto y validar dueno/estado.
@@ -38,13 +40,14 @@ const procesarPago = async (req, res) => {
     }
 
     const garantia = Math.round(r.monto_total * GARANTIA_PORCENTAJE);
+    const comision = Math.round(r.monto_total * COMISION_PORCENTAJE);
 
     // Pasarela MOCK: el cobro siempre se considera exitoso (no hay integracion real).
     const resultado = await db.query(
-      `INSERT INTO pagos (reserva_id, monto, garantia, metodo)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO pagos (reserva_id, monto, garantia, comision, metodo)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [reserva_id, r.monto_total, garantia, metodo || 'tarjeta_credito']
+      [reserva_id, r.monto_total, garantia, comision, metodo || 'tarjeta_credito']
     );
 
     return res.status(201).json({
@@ -124,4 +127,43 @@ const liberarGarantia = async (req, res) => {
   }
 };
 
-module.exports = { procesarPago, getMisPagos, getPagoReserva, liberarGarantia };
+// PATCH /api/pagos/:id/reembolsar - reembolsa el pago cuando la reserva fue cancelada.
+// Cualquiera de las partes de la reserva puede gatillarlo.
+const reembolsar = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const check = await db.query(
+      `SELECT p.id, p.estado, r.estado AS estado_reserva, r.conductor_id, v.propietario_id
+       FROM pagos p
+       JOIN reservas r ON p.reserva_id = r.id
+       JOIN vehiculos v ON r.vehiculo_id = v.id
+       WHERE p.id = $1`,
+      [id]
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ error: 'Pago no encontrado.' });
+    }
+
+    const p = check.rows[0];
+    if (p.conductor_id !== req.usuario.id && p.propietario_id !== req.usuario.id) {
+      return res.status(403).json({ error: 'No puedes reembolsar un pago ajeno.' });
+    }
+    if (p.estado_reserva !== 'cancelada') {
+      return res.status(422).json({ error: 'Solo se reembolsa un pago de una reserva cancelada.' });
+    }
+    if (p.estado === 'reembolsado') {
+      return res.status(409).json({ error: 'Este pago ya fue reembolsado.' });
+    }
+
+    const resultado = await db.query(
+      `UPDATE pagos SET estado = 'reembolsado', estado_garantia = 'liberada' WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    return res.status(200).json({ mensaje: 'Pago reembolsado.', pago: resultado.rows[0] });
+  } catch (error) {
+    return res.status(500).json({ error: 'Error al reembolsar el pago.' });
+  }
+};
+
+module.exports = { procesarPago, getMisPagos, getPagoReserva, liberarGarantia, reembolsar };

@@ -95,15 +95,17 @@ describe('POST /api/chat/:reservaId', () => {
 // ─── GET /api/chat/:reservaId ────────────────────────────────────────────────
 
 describe('GET /api/chat/:reservaId', () => {
-  test('200 — un participante lee los mensajes', async () => {
+  test('200 — un participante lee los mensajes (con nombre del emisor)', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [reservaActiva] })
-      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10, emisor_id: 3, contenido: 'Hola' }] });
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10, emisor_id: 3, emisor_nombre: 'Maria Gonzalez', contenido: 'Hola', creado_en: '2027-01-11T10:00:00Z' }] })
+      .mockResolvedValueOnce({ rows: [] });
     const res = await request(app)
       .get('/api/chat/10')
       .set('Authorization', `Bearer ${tokenPropietario}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body[0]).toHaveProperty('emisor_nombre', 'Maria Gonzalez');
   });
 
   test('404 — reserva no existe', async () => {
@@ -139,14 +141,14 @@ describe('GET /api/chat/:reservaId', () => {
 // ─── GET /api/chat ───────────────────────────────────────────────────────────
 
 describe('GET /api/chat', () => {
-  test('200 — devuelve el resumen de conversaciones del usuario', async () => {
-    db.query.mockResolvedValueOnce({ rows: [{ reserva_id: 10, total_mensajes: 3, ultimo: '2027-01-11T10:00:00Z' }] });
+  test('200 — devuelve el resumen de conversaciones con no leidos', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ reserva_id: 10, total_mensajes: 3, ultimo: '2027-01-11T10:00:00Z', no_leidos: 2 }] });
     const res = await request(app)
       .get('/api/chat')
       .set('Authorization', `Bearer ${tokenConductor}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body[0]).toHaveProperty('reserva_id', 10);
+    expect(res.body[0]).toHaveProperty('no_leidos', 2);
   });
 
   test('500 — si la DB falla', async () => {

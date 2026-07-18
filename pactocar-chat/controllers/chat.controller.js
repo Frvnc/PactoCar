@@ -54,6 +54,7 @@ const enviarMensaje = async (req, res) => {
 };
 
 // GET /api/chat/:reservaId - lista los mensajes de una reserva (modelo de polling).
+// Incluye el nombre del emisor y marca la conversacion como leida por el usuario.
 const getMensajes = async (req, res) => {
   try {
     const { reservaId } = req.params;
@@ -67,27 +68,47 @@ const getMensajes = async (req, res) => {
     }
 
     const resultado = await db.query(
-      `SELECT id, reserva_id, emisor_id, contenido, creado_en
-       FROM mensajes WHERE reserva_id = $1
-       ORDER BY creado_en ASC`,
+      `SELECT m.id, m.reserva_id, m.emisor_id, u.nombre_completo AS emisor_nombre,
+              m.contenido, m.creado_en
+       FROM mensajes m
+       JOIN usuarios u ON m.emisor_id = u.id
+       WHERE m.reserva_id = $1
+       ORDER BY m.creado_en ASC`,
       [reservaId]
     );
+
+    // Marca como leidos hasta el ultimo mensaje visto.
+    const ultimoId = resultado.rows.length ? resultado.rows[resultado.rows.length - 1].id : 0;
+    await db.query(
+      `INSERT INTO chat_lecturas (reserva_id, usuario_id, ultimo_leido_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (reserva_id, usuario_id)
+       DO UPDATE SET ultimo_leido_id = GREATEST(chat_lecturas.ultimo_leido_id, EXCLUDED.ultimo_leido_id)`,
+      [reservaId, req.usuario.id, ultimoId]
+    );
+
     return res.status(200).json(resultado.rows);
   } catch (error) {
     return res.status(500).json({ error: 'Error al obtener los mensajes.' });
   }
 };
 
-// GET /api/chat - resumen de conversaciones del usuario autenticado.
+// GET /api/chat - resumen de conversaciones del usuario, con mensajes no leidos.
 const getConversaciones = async (req, res) => {
   try {
     const resultado = await db.query(
-      `SELECT m.reserva_id, COUNT(*)::int AS total_mensajes, MAX(m.creado_en) AS ultimo
+      `SELECT m.reserva_id,
+              COUNT(*)::int AS total_mensajes,
+              MAX(m.creado_en) AS ultimo,
+              COUNT(*) FILTER (
+                WHERE m.emisor_id <> $1 AND m.id > COALESCE(cl.ultimo_leido_id, 0)
+              )::int AS no_leidos
        FROM mensajes m
        JOIN reservas r ON m.reserva_id = r.id
        JOIN vehiculos v ON r.vehiculo_id = v.id
+       LEFT JOIN chat_lecturas cl ON cl.reserva_id = m.reserva_id AND cl.usuario_id = $1
        WHERE r.conductor_id = $1 OR v.propietario_id = $1
-       GROUP BY m.reserva_id
+       GROUP BY m.reserva_id, cl.ultimo_leido_id
        ORDER BY ultimo DESC`,
       [req.usuario.id]
     );
