@@ -30,6 +30,9 @@ services:
       - DB_PORT=5432
       - DB_NAME=pactocar_db
       - JWT_SECRET=${JWT_SECRET}
+      # Cuenta de administrador que se crea al arrancar contra una base vacia
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     depends_on:
       db:
         condition: service_healthy

@@ -330,7 +330,10 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "DB_PASSWORD", value = var.db_password },
       { name = "JWT_SECRET", value = var.jwt_secret },
       { name = "S3_BUCKET_NAME", value = aws_s3_bucket.fotos.bucket },
-      { name = "AWS_REGION", value = var.aws_region }
+      { name = "AWS_REGION", value = var.aws_region },
+      # Cuenta de administrador que se crea al arrancar contra una base vacia
+      { name = "ADMIN_EMAIL", value = var.admin_email },
+      { name = "ADMIN_PASSWORD", value = var.admin_password }
     ]
 
     logConfiguration = {

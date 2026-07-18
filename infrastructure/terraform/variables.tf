@@ -27,3 +27,14 @@ variable "jwt_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "admin_email" {
+  description = "Correo de la cuenta de administrador que se crea al inicializar la base"
+  type        = string
+}
+
+variable "admin_password" {
+  description = "Contrasena de la cuenta de administrador"
+  type        = string
+  sensitive   = true
+}

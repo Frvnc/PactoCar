@@ -6,3 +6,7 @@ db_name     = "pactocar_db"
 db_username = "postgres"
 db_password = "COMPLETAR_password_seguro_minimo_16_chars"
 jwt_secret  = "COMPLETAR_secreto_JWT_largo_y_aleatorio_minimo_32_chars"
+
+# Cuenta de administrador que se crea sola la primera vez que arranca el backend
+admin_email    = "admin@pactocar.cl"
+admin_password = "COMPLETAR_password_del_admin"

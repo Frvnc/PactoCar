@@ -5,6 +5,7 @@ const path = require('path');
 require('dotenv').config();
 
 const db = require('./db');
+const asegurarAdmin = require('./bootstrap-admin');
 const authRoutes = require('./routes/auth.routes');
 const vehiculosRoutes = require('./routes/vehiculos.routes');
 const adminRoutes = require('./routes/admin.routes');
@@ -41,6 +42,12 @@ if (process.env.NODE_ENV !== 'test') {
     try {
       const sql = fs.readFileSync(path.join(__dirname, 'init.sql'), 'utf8');
       await db.query(sql);
+
+      const admin = await asegurarAdmin();
+      if (admin.creado) {
+        process.stdout.write('Cuenta de administrador creada\n');
+      }
+
       app.listen(PORT, () => {
         process.stdout.write(`Servidor corriendo en el puerto ${PORT}\n`);
       });
