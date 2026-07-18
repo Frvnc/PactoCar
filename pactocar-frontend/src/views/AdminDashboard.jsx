@@ -3,6 +3,9 @@ import { AuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ProfilePanel from '../components/ProfilePanel';
+import Icon from '../components/Icon';
+import EmptyState from '../components/EmptyState';
+import Skeletons from '../components/Skeletons';
 import { useToast } from '../context/ToastContext';
 
 const AdminDashboard = () => {
@@ -122,7 +125,7 @@ const AdminDashboard = () => {
       {error && <div className="error-msg">{error}</div>}
 
       {cargando ? (
-        <div className="spinner" />
+        <Skeletons n={3} />
       ) : (
         <>
           <div className="tabs">
@@ -173,14 +176,17 @@ const AdminDashboard = () => {
 
                 <div className="stats-grid">
                   <div className="stat-card">
+                    <div className="stat-icon"><Icon name="user" size={20} /></div>
                     <div className="stat-value">{estadisticas.total_usuarios}</div>
                     <div className="stat-label">Usuarios</div>
                   </div>
                   <div className="stat-card">
+                    <div className="stat-icon"><Icon name="car" size={20} /></div>
                     <div className="stat-value">{estadisticas.total_vehiculos}</div>
                     <div className="stat-label">Vehiculos</div>
                   </div>
                   <div className="stat-card">
+                    <div className="stat-icon"><Icon name="calendar" size={20} /></div>
                     <div className="stat-value">{totalReservas}</div>
                     <div className="stat-label">Reservas</div>
                   </div>
@@ -202,10 +208,9 @@ const AdminDashboard = () => {
           {seccion === 'verificaciones' && (
             <>
               {verificaciones.length === 0 ? (
-                <div className="empty" style={{ padding: '40px 0' }}>
-                  <strong>Sin solicitudes pendientes</strong>
+                <EmptyState icon="shield" title="Sin solicitudes pendientes">
                   Cuando un usuario solicite verificacion aparecera aqui.
-                </div>
+                </EmptyState>
               ) : (
                 verificaciones.map((v) => (
                   <div key={v.id} className="verif-card">
@@ -301,10 +306,9 @@ const AdminDashboard = () => {
           {seccion === 'fotos' && (
             <>
               {fotosPendientes.length === 0 ? (
-                <div className="empty" style={{ padding: '40px 0' }}>
-                  <strong>Sin fotos pendientes</strong>
+                <EmptyState icon="inbox" title="Sin fotos pendientes">
                   Las fotos subidas por propietarios apareceran aqui para aprobacion.
-                </div>
+                </EmptyState>
               ) : (
                 fotosPendientes.map((v) => (
                   <div key={v.id} className="foto-card">
@@ -336,7 +340,7 @@ const AdminDashboard = () => {
           {seccion === 'usuarios' && (
             <>
               {todos.length === 0 ? (
-                <div className="empty"><strong>Sin otros usuarios registrados.</strong></div>
+                <EmptyState icon="user" title="Sin otros usuarios registrados" />
               ) : (
                 todos.map((u) => (
                   <div key={u.id} className={`user-item${!u.activo ? ' suspendido' : ''}`}>

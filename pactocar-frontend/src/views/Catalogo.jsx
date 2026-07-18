@@ -7,6 +7,10 @@ import VerificacionBanner from '../components/VerificacionBanner';
 import ProfilePanel from '../components/ProfilePanel';
 import ReservaModal from '../components/ReservaModal';
 import Stars from '../components/Stars';
+import Skeletons from '../components/Skeletons';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import MensajesPanel from '../components/MensajesPanel';
 import { fmtFecha, diasEntre, ESTADO_LABEL, MODULOS } from '../utils/format';
 
 const hoy = new Date().toISOString().split('T')[0];
@@ -33,12 +37,14 @@ const Catalogo = () => {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [seccion, setSeccion] = useState('catalogo');
   const [reservaGestion, setReservaGestion] = useState(null);
+  const [mensajesAbierto, setMensajesAbierto] = useState(false);
   const [repMap, setRepMap] = useState({});
   const [chatMap, setChatMap] = useState({});
 
   const headers = { Authorization: `Bearer ${auth.token}` };
   const noVerificado = auth.usuario?.verificado === false;
   const inicial = auth.usuario?.nombre?.charAt(0).toUpperCase() || 'C';
+  const chatNoLeidos = Object.values(chatMap).reduce((a, b) => a + (Number(b) || 0), 0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,10 +161,24 @@ const Catalogo = () => {
     <div className="page">
       {panelAbierto && <ProfilePanel onCerrar={() => setPanelAbierto(false)} />}
       {reservaGestion && <ReservaModal reserva={reservaGestion} onCerrar={() => setReservaGestion(null)} />}
+      {mensajesAbierto && (
+        <MensajesPanel
+          onCerrar={() => setMensajesAbierto(false)}
+          onAbrirReserva={(r) => { setMensajesAbierto(false); setReservaGestion(r); }}
+        />
+      )}
 
       <div className="page-header">
         <Link to="/" className="page-brand">PactoCar</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="avatar-wrap">
+            <button className="nav-icon-btn" onClick={() => setMensajesAbierto(true)} title="Mensajes" aria-label="Mensajes">
+              <Icon name="chat" size={19} />
+            </button>
+            {chatNoLeidos > 0 && (
+              <span className="avatar-badge" aria-label={`${chatNoLeidos} mensajes no leidos`}>{chatNoLeidos}</span>
+            )}
+          </span>
           <span className="badge">Conductor</span>
           <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil" aria-label="Abrir mi perfil">
             {inicial}
@@ -222,10 +242,9 @@ const Catalogo = () => {
           </div>
 
           {cargando ? (
-            <div className="spinner" />
+            <Skeletons n={3} />
           ) : vehiculosFiltrados.length === 0 ? (
-            <div className="empty">
-              <strong>Sin resultados</strong>
+            <EmptyState icon="search" title="Sin resultados">
               {vehiculos.length === 0
                 ? 'No hay vehiculos publicados en este momento.'
                 : 'Intenta con otros filtros.'}
@@ -238,7 +257,7 @@ const Catalogo = () => {
                   Limpiar filtros
                 </button>
               )}
-            </div>
+            </EmptyState>
           ) : (
             vehiculosFiltrados.map((v) => {
               const dias =
@@ -341,12 +360,11 @@ const Catalogo = () => {
           <div className="section-label">Historial de reservas</div>
 
           {cargando ? (
-            <div className="spinner" />
+            <Skeletons n={3} />
           ) : reservas.length === 0 ? (
-            <div className="empty">
-              <strong>Sin reservas aun</strong>
+            <EmptyState icon="calendar" title="Sin reservas aun">
               Reserva un vehiculo desde el catalogo.
-            </div>
+            </EmptyState>
           ) : (
             reservas.map((r) => {
               const estado = getEstado(r);

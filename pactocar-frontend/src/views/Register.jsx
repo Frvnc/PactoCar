@@ -1,11 +1,23 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import Icon from '../components/Icon';
 
 const ROLES = [
   { id: 2, label: 'Propietario', desc: 'Tengo un vehiculo para arrendar' },
   { id: 3, label: 'Conductor', desc: 'Quiero arrendar un vehiculo' },
 ];
+
+const NIVEL_LABEL = ['', 'Debil', 'Media', 'Fuerte'];
+
+const fuerzaPassword = (pw) => {
+  if (!pw) return 0;
+  let nivel = 0;
+  if (pw.length >= 8) nivel++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) nivel++;
+  if (/\d/.test(pw) || /[^A-Za-z0-9]/.test(pw)) nivel++;
+  return nivel;
+};
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,6 +33,7 @@ const Register = () => {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleRol = (id) => setForm({ ...form, rol_id: id });
+  const fuerza = fuerzaPassword(form.password);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +60,10 @@ const Register = () => {
     <div className="page">
       <div className="auth-header">
         <Link to="/" className="auth-back">Volver al inicio</Link>
+        <div className="auth-brand">
+          <span className="auth-brand-badge"><Icon name="car" size={22} /></span>
+          <span className="auth-brand-name">PactoCar</span>
+        </div>
         <div className="auth-title">Crear cuenta</div>
         <div className="auth-subtitle">Unete a PactoCar como propietario o conductor</div>
       </div>
@@ -96,6 +113,16 @@ const Register = () => {
               {showPass ? 'Ocultar' : 'Mostrar'}
             </button>
           </div>
+          {form.password && (
+            <>
+              <div className="pw-meter" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className={`pw-seg${i < fuerza ? ` lvl${fuerza}` : ''}`} />
+                ))}
+              </div>
+              <span className="pw-label">Seguridad: {NIVEL_LABEL[fuerza]}</span>
+            </>
+          )}
         </div>
 
         <div className="field">

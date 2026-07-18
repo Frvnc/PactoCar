@@ -6,6 +6,10 @@ import { useToast } from '../context/ToastContext';
 import VerificacionBanner from '../components/VerificacionBanner';
 import ProfilePanel from '../components/ProfilePanel';
 import ReservaModal from '../components/ReservaModal';
+import Skeletons from '../components/Skeletons';
+import EmptyState from '../components/EmptyState';
+import Icon from '../components/Icon';
+import MensajesPanel from '../components/MensajesPanel';
 import { fmtFecha, diasEntre, ESTADO_LABEL, MODULOS } from '../utils/format';
 
 const FORM_VACIO = { marca: '', modelo: '', anio: '', patente: '', precio_diario_clp: '', imagen_url: '' };
@@ -31,12 +35,14 @@ const MisVehiculos = () => {
   const [panelAbierto, setPanelAbierto] = useState(false);
   const [seccion, setSeccion] = useState('vehiculos');
   const [reservaGestion, setReservaGestion] = useState(null);
+  const [mensajesAbierto, setMensajesAbierto] = useState(false);
   const [chatMap, setChatMap] = useState({});
 
   const { showToast } = useToast();
   const headers = { Authorization: `Bearer ${auth.token}` };
   const noVerificado = auth.usuario?.verificado === false;
   const inicial = auth.usuario?.nombre?.charAt(0).toUpperCase() || 'P';
+  const chatNoLeidos = Object.values(chatMap).reduce((a, b) => a + (Number(b) || 0), 0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -159,10 +165,24 @@ const MisVehiculos = () => {
     <div className="page">
       {panelAbierto && <ProfilePanel onCerrar={() => setPanelAbierto(false)} />}
       {reservaGestion && <ReservaModal reserva={reservaGestion} onCerrar={() => setReservaGestion(null)} />}
+      {mensajesAbierto && (
+        <MensajesPanel
+          onCerrar={() => setMensajesAbierto(false)}
+          onAbrirReserva={(r) => { setMensajesAbierto(false); setReservaGestion(r); }}
+        />
+      )}
 
       <div className="page-header">
         <Link to="/" className="page-brand">PactoCar</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="avatar-wrap">
+            <button className="nav-icon-btn" onClick={() => setMensajesAbierto(true)} title="Mensajes" aria-label="Mensajes">
+              <Icon name="chat" size={19} />
+            </button>
+            {chatNoLeidos > 0 && (
+              <span className="avatar-badge" aria-label={`${chatNoLeidos} mensajes no leidos`}>{chatNoLeidos}</span>
+            )}
+          </span>
           <span className="badge">Propietario</span>
           <button className="nav-avatar-btn" onClick={() => setPanelAbierto(true)} title="Mi perfil" aria-label="Abrir mi perfil">
             {inicial}
@@ -266,12 +286,11 @@ const MisVehiculos = () => {
           )}
 
           {cargando ? (
-            <div className="spinner" />
+            <Skeletons n={2} />
           ) : vehiculos.length === 0 ? (
-            <div className="empty">
-              <strong>Sin vehiculos aun</strong>
+            <EmptyState icon="car" title="Sin vehiculos aun">
               Publica tu primer vehiculo con el boton de arriba.
-            </div>
+            </EmptyState>
           ) : (
             vehiculos.map((v) => (
               <div key={v.id} className={`vehicle-card${!v.disponible ? ' vehicle-inactivo' : ''}`}>
@@ -324,12 +343,11 @@ const MisVehiculos = () => {
           })()}
 
           {cargando ? (
-            <div className="spinner" />
+            <Skeletons n={2} />
           ) : reservas.length === 0 ? (
-            <div className="empty">
-              <strong>Sin reservas aun</strong>
+            <EmptyState icon="calendar" title="Sin reservas aun">
               Las reservas de conductores apareceran aqui.
-            </div>
+            </EmptyState>
           ) : (
             reservas.map((r) => {
               const estado = getEstado(r);

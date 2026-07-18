@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import Icon from '../components/Icon';
 
 const REDIRECT_POR_ROL = {
   1: '/admin/dashboard',
@@ -40,6 +41,10 @@ const Login = () => {
     <div className="page">
       <div className="auth-header">
         <Link to="/" className="auth-back">Volver al inicio</Link>
+        <div className="auth-brand">
+          <span className="auth-brand-badge"><Icon name="car" size={22} /></span>
+          <span className="auth-brand-name">PactoCar</span>
+        </div>
         <div className="auth-title">Bienvenido</div>
         <div className="auth-subtitle">Ingresa a tu cuenta de PactoCar</div>
       </div>

@@ -93,7 +93,8 @@ const getMensajes = async (req, res) => {
   }
 };
 
-// GET /api/chat - resumen de conversaciones del usuario, con mensajes no leidos.
+// GET /api/chat - bandeja de conversaciones del usuario (inbox central).
+// Incluye vehiculo, la otra parte, el ultimo mensaje y los no leidos.
 const getConversaciones = async (req, res) => {
   try {
     const resultado = await db.query(
@@ -102,13 +103,21 @@ const getConversaciones = async (req, res) => {
               MAX(m.creado_en) AS ultimo,
               COUNT(*) FILTER (
                 WHERE m.emisor_id <> $1 AND m.id > COALESCE(cl.ultimo_leido_id, 0)
-              )::int AS no_leidos
+              )::int AS no_leidos,
+              r.estado, r.fecha_inicio, r.fecha_fin,
+              v.marca, v.modelo,
+              CASE WHEN r.conductor_id = $1 THEN pro.nombre_completo ELSE con.nombre_completo END AS otra_parte,
+              (SELECT contenido FROM mensajes m2 WHERE m2.reserva_id = m.reserva_id
+               ORDER BY m2.creado_en DESC LIMIT 1) AS ultimo_mensaje
        FROM mensajes m
        JOIN reservas r ON m.reserva_id = r.id
        JOIN vehiculos v ON r.vehiculo_id = v.id
+       JOIN usuarios con ON r.conductor_id = con.id
+       JOIN usuarios pro ON v.propietario_id = pro.id
        LEFT JOIN chat_lecturas cl ON cl.reserva_id = m.reserva_id AND cl.usuario_id = $1
        WHERE r.conductor_id = $1 OR v.propietario_id = $1
-       GROUP BY m.reserva_id, cl.ultimo_leido_id
+       GROUP BY m.reserva_id, cl.ultimo_leido_id, r.estado, r.fecha_inicio, r.fecha_fin,
+                r.conductor_id, v.marca, v.modelo, pro.nombre_completo, con.nombre_completo
        ORDER BY ultimo DESC`,
       [req.usuario.id]
     );

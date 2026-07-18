@@ -145,6 +145,8 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   padding: 44px 0 36px;
 }
 
@@ -168,7 +170,7 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   max-width: 400px;
 }
 
-.home-actions { display: flex; flex-direction: column; gap: 12px; max-width: 340px; }
+.home-actions { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; }
 
 /* ─── HOME NAVBAR ────────────────────────────────────────────────────────── */
 .home-navbar {
@@ -184,10 +186,7 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 .home-greeting {
   font-size: 30px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--text) 60%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
   letter-spacing: -0.8px;
   margin-bottom: 4px;
 }
@@ -661,6 +660,10 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 }
 
 .btn-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -672,6 +675,7 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   color: var(--text-2);
   transition: all 0.15s;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .btn-sm:hover { border-color: var(--text-2); color: var(--text); }
@@ -892,6 +896,7 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
+  white-space: nowrap;
 }
 
 .btn-link:hover { opacity: 0.75; }
@@ -1758,4 +1763,394 @@ h1, h2, h3 { font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
 .chat-hora {
   font-size: 10px;
   color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOME - rediseno (ancho desktop, hero con imagen, mini panel, iconos)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La home mantiene el ancho movil-first del resto de vistas. */
+.page.home-page {
+  max-width: 560px;
+}
+
+.home-nav-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ── Hero visitante (2 columnas en desktop) ─────────────────────────────── */
+.home-hero-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 28px;
+  padding: 40px 0 32px;
+}
+
+.home-hero-copy {
+  width: 100%;
+}
+
+.home-hero-copy .home-actions {
+  margin: 24px auto 0;
+}
+
+
+/* ── Hero logueado (mini panel) ─────────────────────────────────────────── */
+.home-hero-in {
+  text-align: center;
+  padding: 44px 0 28px;
+}
+
+.home-tagline-in {
+  font-size: 15px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin: 8px auto 24px;
+  max-width: 460px;
+}
+
+/* Boton de accion compacto y centrado (no ocupa toda la columna) */
+.home-cta {
+  display: inline-block;
+  width: auto;
+  padding: 14px 40px;
+}
+
+/* ── Accesos rapidos (cards) ────────────────────────────────────────────── */
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.quick-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+
+.quick-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+}
+
+.quick-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quick-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.quick-desc {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+/* ── Iconos en las features ─────────────────────────────────────────────── */
+.home-feature-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.home-feature-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.home-feature-head .home-feature-title {
+  margin-bottom: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PULIDO - skeletons, estados vacios, badge de avatar, auth, medidor
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Skeletons de carga ─────────────────────────────────────────────────── */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: shimmer 1.3s infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sk-line { height: 12px; margin-bottom: 10px; }
+.sk-title { height: 16px; width: 50%; margin-bottom: 16px; }
+.sk-line.w80 { width: 80%; }
+.sk-line.w60 { width: 60%; }
+.sk-line.w40 { width: 40%; margin-bottom: 0; }
+
+/* ── Estado vacio con icono ─────────────────────────────────────────────── */
+.empty-icon {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+/* ── Badge de no leidos en el avatar ────────────────────────────────────── */
+.avatar-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.avatar-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--error);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+}
+
+/* ── Marca en login/registro ────────────────────────────────────────────── */
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.auth-brand-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, #e06d00 100%);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 12px rgba(245, 158, 11, 0.3);
+}
+
+.auth-brand-name {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.4px;
+}
+
+/* ── Medidor de fuerza de contrasena ────────────────────────────────────── */
+.pw-meter {
+  display: flex;
+  gap: 5px;
+  margin: 2px 0 6px;
+}
+
+.pw-seg {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  transition: background 0.2s;
+}
+
+.pw-seg.lvl1 { background: var(--error); }
+.pw-seg.lvl2 { background: var(--accent); }
+.pw-seg.lvl3 { background: #16a34a; }
+
+.pw-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ── Icono en las stat cards del admin ──────────────────────────────────── */
+.stat-icon {
+  color: var(--accent);
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+/* ── Boton de icono en el header (chat) ─────────────────────────────────── */
+.nav-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.nav-icon-btn:hover {
+  color: var(--accent);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+/* ── Bandeja de conversaciones ──────────────────────────────────────────── */
+.conv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conv-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.conv-item:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  transform: translateX(2px);
+}
+
+.conv-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.conv-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conv-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-hora {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.conv-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+  margin: 2px 0 4px;
+}
+
+.conv-preview {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-shrink: 0;
 }

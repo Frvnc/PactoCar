@@ -1,23 +1,17 @@
-name: core (backend + frontend) - CI/Sec
+name: core (backend + frontend) - CI/CD/Sec
 
-# Pipeline del core existente (auth, catalogo, reservas, admin + frontend React).
-# Adaptado a la Ev4: todo corre en el runner de GitHub, sin despliegue a AWS.
-# El "despliegue" se demuestra en local con docker-compose up --build.
+# Pipeline del core: CI (tests) + 4 fases de seguridad DevSecOps + CD a la nube
+# (backend -> AWS ECS, frontend -> Azure Static Web Apps), tal como la arquitectura definida.
 on:
   push:
     branches: [main]
-    paths:
-      - 'pactocar-backend/**'
-      - 'pactocar-frontend/**'
-      - 'sonar-project.properties'
-      - '.github/workflows/pipeline.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'pactocar-backend/**'
-      - 'pactocar-frontend/**'
-      - 'sonar-project.properties'
-      - '.github/workflows/pipeline.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECS_CLUSTER: pactocar-cluster
+  ECS_SERVICE: pactocar-api
 
 jobs:
   # ── CI: Tests unitarios del backend ──────────────────────────────────────────
@@ -43,7 +37,7 @@ jobs:
           name: coverage
           path: pactocar-backend/coverage
 
-  # ── Fase 1: SAST (SonarCloud sobre el codigo del backend) ────────────────────
+  # ── Fase 1: SAST (SonarCloud) ────────────────────────────────────────────────
   sast:
     name: SAST - SonarCloud
     runs-on: ubuntu-latest
@@ -112,28 +106,101 @@ jobs:
           severity: CRITICAL
           exit-code: '1'
 
-  # ── CD local: build de las imagenes + escaneo de imagen ──────────────────────
-  build:
-    name: Docker Build (local) + Trivy Image
+  # ── CD: Build y push de imagenes a Amazon ECR ────────────────────────────────
+  docker-build:
+    name: Docker Build and Push to ECR
     runs-on: ubuntu-latest
     needs: [test, sast, sca, secret-scan, iac-scan]
     steps:
       - uses: actions/checkout@v4
-      - name: Construir imagen backend (local, sin push)
-        run: docker build -t pactocar-backend:ci ./pactocar-backend
-      - name: Construir imagen frontend (local, sin push)
-        run: docker build -t pactocar-frontend:ci ./pactocar-frontend
-      - name: Escaneo de la imagen backend (CVEs)
+      - uses: docker/setup-buildx-action@v3
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login a Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build y push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pactocar-backend
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
+      - name: Build y push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./pactocar-frontend
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+
+  # ── Trivy sobre las imagenes de ECR ──────────────────────────────────────────
+  trivy:
+    name: Trivy - CVE Scan (imagenes)
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login a Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Escanear imagen backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: pactocar-backend:ci
-          severity: CRITICAL
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
+          format: table
           exit-code: '1'
           ignore-unfixed: true
-      - name: Escaneo de la imagen frontend (CVEs)
+          severity: CRITICAL
+      - name: Escanear imagen frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: pactocar-frontend:ci
-          severity: CRITICAL
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
+          format: table
           exit-code: '1'
           ignore-unfixed: true
+          severity: CRITICAL
+
+  # ── Deploy: ECS (backend) + Azure Static Web Apps (frontend) ─────────────────
+  deploy:
+    name: Deploy - ECS + Azure SWA
+    runs-on: ubuntu-latest
+    needs: trivy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Deploy backend a ECS
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --force-new-deployment
+      - name: Deploy frontend a Azure SWA
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: /pactocar-frontend
+          output_location: dist
+          app_build_command: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
