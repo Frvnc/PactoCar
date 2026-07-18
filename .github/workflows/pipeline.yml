@@ -1,7 +1,7 @@
 name: core (backend + frontend) - CI/CD/Sec
 
 # Pipeline del core: CI (tests) + 4 fases de seguridad DevSecOps + CD a la nube
-# (backend -> AWS ECS, frontend -> Azure Static Web Apps), tal como la arquitectura definida.
+# (backend -> AWS ECS, frontend -> Azure Static Web Apps), tal como la arquitectura definida
 on:
   push:
     branches: [main]
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.11.1'
           cache: npm
           cache-dependency-path: pactocar-backend/package-lock.json
       - name: Instalar dependencias
@@ -124,20 +124,26 @@ jobs:
       - name: Login a Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      # Imagen etiquetada con el SHA del commit: el despliegue apunta a una version
+      # concreta e inmutable. El tag latest queda como referencia base de Terraform
       - name: Build y push backend
         uses: docker/build-push-action@v6
         with:
           context: ./pactocar-backend
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
       - name: Build y push frontend
         uses: docker/build-push-action@v6
         with:
           context: ./pactocar-frontend
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
           # Los 4 modulos se exponen por el mismo API Gateway, cada uno bajo su
-          # propio path (/api/pagos, /api/contratos, /api/reputacion, /api/chat).
+          # propio path (/api/pagos, /api/contratos, /api/reputacion, /api/chat)
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }}
             VITE_PAGOS_URL=${{ secrets.VITE_API_URL }}
@@ -164,7 +170,7 @@ jobs:
       - name: Escanear imagen backend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:latest
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:${{ github.sha }}
           format: table
           exit-code: '1'
           ignore-unfixed: true
@@ -172,7 +178,7 @@ jobs:
       - name: Escanear imagen frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:${{ github.sha }}
           format: table
           exit-code: '1'
           ignore-unfixed: true
@@ -193,12 +199,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Deploy backend a ECS
+      - name: Login a Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      # Se parte de la task definition vigente para conservar las variables de entorno
+      # que define Terraform, y solo se le cambia la imagen
+      - name: Tomar la task definition vigente
         run: |
-          aws ecs update-service \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --service ${{ env.ECS_SERVICE }} \
-            --force-new-deployment
+          aws ecs describe-task-definition --task-definition pactocar-backend \
+            --query taskDefinition \
+            | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            > task-definition.json
+      - name: Fijar la imagen recien publicada
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: pactocar-backend
+          image: ${{ steps.login-ecr.outputs.registry }}/pactocar-backend:${{ github.sha }}
+      - name: Deploy backend a ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
       - name: Deploy frontend a Azure SWA
         uses: Azure/static-web-apps-deploy@v1
         with:

@@ -1,14 +1,14 @@
 # ─── LOS 4 MODULOS EN ECS FARGATE ─────────────────────────────────────────────
 #
 # Cada modulo es un microservicio independiente con su propio repositorio ECR,
-# su task definition, su servicio ECS y su regla de ruteo en el ALB.
-# El ALB enruta por path: /api/pagos -> pagos, /api/contratos -> contratos, etc.
-# El resto del trafico cae en la accion por defecto (el backend core).
+# su task definition, su servicio ECS y su regla de ruteo en el ALB
+# El ALB enruta por path: /api/pagos -> pagos, /api/contratos -> contratos, etc
+# El resto del trafico cae en la accion por defecto (el backend core)
 #
 # Los modulos no se llaman por HTTP entre si: comparten la base de datos RDS y
-# el mismo JWT_SECRET, por lo que solo necesitan credenciales de BD.
+# el mismo JWT_SECRET, por lo que solo necesitan credenciales de BD
 # Cada servicio ejecuta su init.sql idempotente al arrancar, asi que crea sus
-# propias tablas contra RDS sin bootstrap manual.
+# propias tablas contra RDS sin bootstrap manual
 
 locals {
   modulos = {
@@ -127,16 +127,24 @@ resource "aws_ecs_task_definition" "modulo" {
       protocol      = "tcp"
     }]
 
-    environment = [
-      { name = "PORT", value = tostring(each.value.puerto) },
-      { name = "NODE_ENV", value = "production" },
-      { name = "DB_HOST", value = aws_db_instance.postgres.address },
-      { name = "DB_PORT", value = "5432" },
-      { name = "DB_NAME", value = var.db_name },
-      { name = "DB_USER", value = var.db_username },
-      { name = "DB_PASSWORD", value = var.db_password },
-      { name = "JWT_SECRET", value = var.jwt_secret }
-    ]
+    # Al modulo de pagos se le inyecta ademas la URL de contratos-service: cuando
+    # un pago se completa lo llama por HTTP para emitir el contrato. La llamada
+    # sale por el ALB, que enruta /api/contratos al servicio correspondiente
+    environment = concat(
+      [
+        { name = "PORT", value = tostring(each.value.puerto) },
+        { name = "NODE_ENV", value = "production" },
+        { name = "DB_HOST", value = aws_db_instance.postgres.address },
+        { name = "DB_PORT", value = "5432" },
+        { name = "DB_NAME", value = var.db_name },
+        { name = "DB_USER", value = var.db_username },
+        { name = "DB_PASSWORD", value = var.db_password },
+        { name = "JWT_SECRET", value = var.jwt_secret }
+      ],
+      each.key == "pagos" ? [
+        { name = "CONTRATOS_URL", value = "http://${aws_lb.main.dns_name}" }
+      ] : []
+    )
 
     logConfiguration = {
       logDriver = "awslogs"
@@ -177,8 +185,10 @@ resource "aws_ecs_service" "modulo" {
     rollback = false
   }
 
-  # El pipeline de cada modulo publica una imagen nueva y fuerza el redespliegue;
-  # Terraform no debe revertir esa task definition.
+  # Terraform define la task definition base (variables de entorno, recursos, logs)
+  # El pipeline registra revisiones nuevas sobre esa base fijando la imagen por SHA,
+  # asi que aqui se ignora: de lo contrario un apply devolveria el servicio a una
+  # imagen antigua. Flujo: terraform apply cambia el entorno -> el pipeline despliega
   lifecycle {
     ignore_changes = [task_definition, desired_count]
   }

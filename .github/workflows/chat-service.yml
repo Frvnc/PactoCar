@@ -1,6 +1,6 @@
 name: chat-service - CI/CD/Sec
 
-# Pipeline independiente del modulo chat-service.
+# Pipeline independiente del modulo chat-service
 on:
   push:
     branches: [main]
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20.11.1'
           cache: npm
           cache-dependency-path: pactocar-chat/package-lock.json
       - name: Instalar dependencias
@@ -102,23 +102,46 @@ jobs:
       - name: Login a Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      # La imagen se etiqueta con el SHA del commit: cada despliegue queda atado a una
+      # version concreta e inmutable. El tag latest se mantiene solo para que la task
+      # definition base de Terraform tenga una referencia valida al crearse
       - name: Build y push de la imagen a ECR
         uses: docker/build-push-action@v6
         with:
           context: ./pactocar-chat
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:latest
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:latest
       - name: Escaneo de la imagen (CVEs criticos)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:latest
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:${{ github.sha }}
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
-      - name: Desplegar en ECS Fargate
+      # Se parte de la task definition vigente para conservar las variables de entorno
+      # que define Terraform, y solo se le cambia la imagen
+      - name: Tomar la task definition vigente
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
-          aws ecs update-service \
-            --cluster ${{ env.ECS_CLUSTER }} \
-            --service ${{ env.ECS_SERVICE }} \
-            --force-new-deployment
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition \
+            | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            > task-definition.json
+      - name: Fijar la imagen recien publicada
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: pactocar-chat
+          image: ${{ steps.login-ecr.outputs.registry }}/pactocar-chat:${{ github.sha }}
+      - name: Desplegar en ECS Fargate
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

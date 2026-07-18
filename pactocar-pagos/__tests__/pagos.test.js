@@ -14,6 +14,11 @@ const tokenPropietario = jwt.sign({ id: 2, rol_id: 2, verificado: true }, proces
 
 afterEach(() => jest.clearAllMocks());
 
+// contratos-service se sustituye por un doble: los tests no salen a la red
+beforeEach(() => {
+  global.fetch = jest.fn().mockResolvedValue({ status: 201 });
+});
+
 // ─── POST /api/pagos ─────────────────────────────────────────────────────────
 
 describe('POST /api/pagos', () => {
@@ -34,6 +39,46 @@ describe('POST /api/pagos', () => {
     const insertArgs = db.query.mock.calls[2][1];
     expect(insertArgs[2]).toBe(20000);
     expect(insertArgs[3]).toBe(10000);
+  });
+
+  test('201 — al pagar se pide el contrato a contratos-service por HTTP', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 10, conductor_id: 3, monto_total: 100000, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/pagos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.contrato).toEqual({ generado: true });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    const [url, opciones] = global.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:3006/api/contratos');
+    expect(opciones.method).toBe('POST');
+    expect(JSON.parse(opciones.body)).toEqual({ reserva_id: 10 });
+    // El token del conductor se reenvia para que contratos valide la identidad
+    expect(opciones.headers.Authorization).toBe(`Bearer ${tokenConductor}`);
+  });
+
+  test('201 — el pago sigue siendo valido si contratos-service no responde', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 10, conductor_id: 3, monto_total: 100000, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/pagos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.pago).toHaveProperty('id');
+    expect(res.body.contrato.generado).toBe(false);
   });
 
   test('403 — propietario no puede pagar', async () => {

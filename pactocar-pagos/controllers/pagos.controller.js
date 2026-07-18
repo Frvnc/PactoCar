@@ -1,12 +1,13 @@
 const db = require('../db');
+const { solicitarContrato } = require('../services/contratos.client');
 
-// Porcentaje del monto del arriendo que se retiene como garantia (escrow).
+// Porcentaje del monto del arriendo que se retiene como garantia (escrow)
 const GARANTIA_PORCENTAJE = 0.2;
-// Comision de la plataforma sobre el arriendo (se descuenta al propietario).
+// Comision de la plataforma sobre el arriendo (se descuenta al propietario)
 const COMISION_PORCENTAJE = 0.1;
 
-// POST /api/pagos - el conductor paga una reserva confirmada.
-// Comunicacion inter-modulo: lee la reserva del core para obtener el monto y validar dueno/estado.
+// POST /api/pagos - el conductor paga una reserva confirmada
+// Comunicacion inter-modulo: lee la reserva del core para obtener el monto y validar dueno/estado
 const procesarPago = async (req, res) => {
   try {
     if (req.usuario.rol_id !== 3) {
@@ -42,7 +43,7 @@ const procesarPago = async (req, res) => {
     const garantia = Math.round(r.monto_total * GARANTIA_PORCENTAJE);
     const comision = Math.round(r.monto_total * COMISION_PORCENTAJE);
 
-    // Pasarela MOCK: el cobro siempre se considera exitoso (no hay integracion real).
+    // Pasarela MOCK: el cobro siempre se considera exitoso (no hay integracion real)
     const resultado = await db.query(
       `INSERT INTO pagos (reserva_id, monto, garantia, comision, metodo)
        VALUES ($1, $2, $3, $4, $5)
@@ -50,16 +51,20 @@ const procesarPago = async (req, res) => {
       [reserva_id, r.monto_total, garantia, comision, metodo || 'tarjeta_credito']
     );
 
+    // Confirmado el pago, se pide a contratos-service que emita el contrato digital
+    const contrato = await solicitarContrato(reserva_id, req.headers.authorization);
+
     return res.status(201).json({
       mensaje: 'Pago procesado. Garantia retenida en escrow.',
       pago: resultado.rows[0],
+      contrato,
     });
   } catch (error) {
     return res.status(500).json({ error: 'Error al procesar el pago.' });
   }
 };
 
-// GET /api/pagos/mios - pagos del conductor autenticado.
+// GET /api/pagos/mios - pagos del conductor autenticado
 const getMisPagos = async (req, res) => {
   try {
     if (req.usuario.rol_id !== 3) {
@@ -79,7 +84,7 @@ const getMisPagos = async (req, res) => {
   }
 };
 
-// GET /api/pagos/reserva/:reservaId - pago asociado a una reserva.
+// GET /api/pagos/reserva/:reservaId - pago asociado a una reserva
 const getPagoReserva = async (req, res) => {
   try {
     const { reservaId } = req.params;
@@ -91,7 +96,7 @@ const getPagoReserva = async (req, res) => {
 };
 
 // PATCH /api/pagos/:id/liberar-garantia - el propietario libera la garantia
-// cuando la reserva quedo finalizada (devolucion confirmada).
+// cuando la reserva quedo finalizada (devolucion confirmada)
 const liberarGarantia = async (req, res) => {
   try {
     if (req.usuario.rol_id !== 2) {
@@ -127,8 +132,8 @@ const liberarGarantia = async (req, res) => {
   }
 };
 
-// PATCH /api/pagos/:id/reembolsar - reembolsa el pago cuando la reserva fue cancelada.
-// Cualquiera de las partes de la reserva puede gatillarlo.
+// PATCH /api/pagos/:id/reembolsar - reembolsa el pago cuando la reserva fue cancelada
+// Cualquiera de las partes de la reserva puede gatillarlo
 const reembolsar = async (req, res) => {
   try {
     const { id } = req.params;
