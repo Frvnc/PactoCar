@@ -1,0 +1,100 @@
+name: chat-service - CI/CD/Sec
+
+# Pipeline independiente del modulo chat-service.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pactocar-chat/**'
+      - '.github/workflows/chat-service.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'pactocar-chat/**'
+      - '.github/workflows/chat-service.yml'
+
+env:
+  MODULE_DIR: pactocar-chat
+  IMAGE: pactocar-chat:ci
+
+jobs:
+  test:
+    name: Test - Jest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pactocar-chat/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+        working-directory: pactocar-chat
+      - name: Ejecutar tests
+        run: npm test
+        working-directory: pactocar-chat
+
+  sast:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analisis estatico con Semgrep
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep \
+            semgrep scan --config p/javascript --config p/security-audit \
+            --severity ERROR --error --metrics=off /src/pactocar-chat
+
+  sca:
+    name: SCA - Trivy (dependencias)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escaneo de dependencias (CVEs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: pactocar-chat
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+  secret-scan:
+    name: Secret Scanning - Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escaneo de secretos en el modulo
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest \
+            dir /repo/pactocar-chat --no-banner --redact --exit-code 1
+
+  iac-scan:
+    name: IaC Scanning - Trivy config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Escaneo del Dockerfile / manifiestos
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: pactocar-chat
+          severity: CRITICAL
+          exit-code: '1'
+
+  build:
+    name: Docker Build + Trivy Image
+    runs-on: ubuntu-latest
+    needs: [test, sast, sca, secret-scan, iac-scan]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir imagen (local, sin push)
+        run: docker build -t ${{ env.IMAGE }} ./pactocar-chat
+      - name: Escaneo de la imagen construida (CVEs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true

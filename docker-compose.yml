@@ -51,18 +51,75 @@ services:
       db:
         condition: service_healthy
 
+  contratos:
+    build: ./pactocar-contratos
+    container_name: pactocar-contratos
+    ports:
+      - "3006:3006"
+    environment:
+      - PORT=3006
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=pactocar_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  reputacion:
+    build: ./pactocar-reputacion
+    container_name: pactocar-reputacion
+    ports:
+      - "3007:3007"
+    environment:
+      - PORT=3007
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=pactocar_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  chat:
+    build: ./pactocar-chat
+    container_name: pactocar-chat
+    ports:
+      - "3008:3008"
+    environment:
+      - PORT=3008
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=pactocar_db
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./pactocar-frontend
       args:
         - VITE_API_URL=http://localhost:3000
         - VITE_PAGOS_URL=http://localhost:3005
+        - VITE_CONTRATOS_URL=http://localhost:3006
+        - VITE_REPUTACION_URL=http://localhost:3007
+        - VITE_CHAT_URL=http://localhost:3008
     container_name: pactocar-web
     ports:
       - "80:80"
     depends_on:
       - backend
       - pagos
+      - contratos
+      - reputacion
+      - chat
 
 volumes:
   pgdata:
