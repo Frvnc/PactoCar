@@ -163,6 +163,18 @@ const actualizarEstadoReserva = async (req, res) => {
       });
     }
 
+    // El arriendo no puede empezar sin el cobro hecho: una vez en curso ya no se
+    // puede pagar, asi que sin esta guarda el propietario dejaria la reserva
+    // impagable con solo adelantar el estado
+    if (estado === 'en_curso') {
+      const pago = await db.query('SELECT id FROM pagos WHERE reserva_id = $1', [id]);
+      if (pago.rows.length === 0) {
+        return res.status(422).json({
+          error: 'No se puede iniciar el arriendo: la reserva aun no ha sido pagada.',
+        });
+      }
+    }
+
     const resultado = await db.query(
       'UPDATE reservas SET estado = $1 WHERE id = $2 RETURNING *',
       [estado, id]

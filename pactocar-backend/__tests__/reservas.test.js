@@ -177,9 +177,11 @@ describe('PATCH /api/reservas/:id', () => {
     expect(res.body.reserva.estado).toBe('confirmada');
   });
 
-  test('200 — propietario marca reserva en curso', async () => {
+  test('200 — propietario marca reserva en curso cuando ya esta pagada', async () => {
     db.query
       .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'confirmada' }] })
+      // el pago existe: el arriendo puede empezar
+      .mockResolvedValueOnce({ rows: [{ id: 7 }] })
       .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'en_curso' }] });
     const res = await request(app)
       .patch('/api/reservas/1')
@@ -187,6 +189,32 @@ describe('PATCH /api/reservas/:id', () => {
       .send({ estado: 'en_curso' });
     expect(res.status).toBe(200);
     expect(res.body.reserva.estado).toBe('en_curso');
+  });
+
+  test('422 — no se puede iniciar el arriendo de una reserva sin pagar', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'confirmada' }] })
+      // no hay pago registrado para la reserva
+      .mockResolvedValueOnce({ rows: [] });
+    const res = await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'en_curso' });
+    expect(res.status).toBe(422);
+    expect(res.body.error).toMatch(/no ha sido pagada/i);
+  });
+
+  test('la reserva sin pagar no se actualiza en la base', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 1, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [] });
+    await request(app)
+      .patch('/api/reservas/1')
+      .set('Authorization', `Bearer ${tokenPropietario}`)
+      .send({ estado: 'en_curso' });
+    // solo la lectura de la reserva y la del pago: ningun UPDATE
+    expect(db.query).toHaveBeenCalledTimes(2);
+    expect(db.query.mock.calls.some(([sql]) => /UPDATE/i.test(sql))).toBe(false);
   });
 
   test('200 — propietario marca la devolucion (finalizada)', async () => {
