@@ -9,4 +9,6 @@ COPY . .
 
 EXPOSE 3005
 
+USER node
+
 CMD ["node", "index.js"]

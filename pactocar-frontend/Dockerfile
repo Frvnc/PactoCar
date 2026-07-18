@@ -23,13 +23,18 @@ ENV VITE_CHAT_URL=$VITE_CHAT_URL
 RUN npm run build
 
 # Stage 2 — Serve
-FROM nginx:1.27-alpine
+# Imagen sin privilegios: nginx corre como el usuario nginx y escucha en 8080,
+# porque un proceso no root no puede enlazar puertos por debajo de 1024
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 
+USER root
 RUN apk upgrade --no-cache
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+USER nginx
+
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

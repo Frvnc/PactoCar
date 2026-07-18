@@ -82,7 +82,7 @@ jobs:
         with:
           scan-type: config
           scan-ref: pactocar-reputacion
-          severity: CRITICAL
+          severity: CRITICAL,HIGH
           exit-code: '1'
 
   build:
