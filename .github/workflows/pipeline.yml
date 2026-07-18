@@ -136,8 +136,14 @@ jobs:
           context: ./pactocar-frontend
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/pactocar-frontend:latest
+          # Los 4 modulos se exponen por el mismo API Gateway, cada uno bajo su
+          # propio path (/api/pagos, /api/contratos, /api/reputacion, /api/chat).
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_PAGOS_URL=${{ secrets.VITE_API_URL }}
+            VITE_CONTRATOS_URL=${{ secrets.VITE_API_URL }}
+            VITE_REPUTACION_URL=${{ secrets.VITE_API_URL }}
+            VITE_CHAT_URL=${{ secrets.VITE_API_URL }}
 
   # ── Trivy sobre las imagenes de ECR ──────────────────────────────────────────
   trivy:
@@ -204,3 +210,7 @@ jobs:
           app_build_command: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_PAGOS_URL: ${{ secrets.VITE_API_URL }}
+          VITE_CONTRATOS_URL: ${{ secrets.VITE_API_URL }}
+          VITE_REPUTACION_URL: ${{ secrets.VITE_API_URL }}
+          VITE_CHAT_URL: ${{ secrets.VITE_API_URL }}

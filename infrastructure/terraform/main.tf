@@ -149,6 +149,14 @@ resource "aws_security_group" "ecs" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  # Puertos de los 4 modulos (pagos, contratos, reputacion, chat)
+  ingress {
+    from_port       = 3005
+    to_port         = 3008
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -313,16 +321,16 @@ resource "aws_ecs_task_definition" "backend" {
     }]
 
     environment = [
-      { name = "PORT",        value = "3000" },
-      { name = "NODE_ENV",    value = "production" },
-      { name = "DB_HOST",     value = aws_db_instance.postgres.address },
-      { name = "DB_PORT",     value = "5432" },
-      { name = "DB_NAME",     value = var.db_name },
-      { name = "DB_USER",     value = var.db_username },
+      { name = "PORT", value = "3000" },
+      { name = "NODE_ENV", value = "production" },
+      { name = "DB_HOST", value = aws_db_instance.postgres.address },
+      { name = "DB_PORT", value = "5432" },
+      { name = "DB_NAME", value = var.db_name },
+      { name = "DB_USER", value = var.db_username },
       { name = "DB_PASSWORD", value = var.db_password },
-      { name = "JWT_SECRET",     value = var.jwt_secret },
+      { name = "JWT_SECRET", value = var.jwt_secret },
       { name = "S3_BUCKET_NAME", value = aws_s3_bucket.fotos.bucket },
-      { name = "AWS_REGION",     value = var.aws_region }
+      { name = "AWS_REGION", value = var.aws_region }
     ]
 
     logConfiguration = {

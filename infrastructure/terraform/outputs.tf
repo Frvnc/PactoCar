@@ -28,6 +28,11 @@ output "api_gateway_url" {
   value       = aws_apigatewayv2_stage.default.invoke_url
 }
 
+output "ecr_modulos_urls" {
+  description = "URLs de los repositorios ECR de los 4 modulos"
+  value       = { for k, v in aws_ecr_repository.modulo : k => v.repository_url }
+}
+
 output "s3_fotos_bucket" {
   description = "Nombre del bucket S3 para fotos de vehiculos — agregar como S3_BUCKET_NAME en .env"
   value       = aws_s3_bucket.fotos.bucket
