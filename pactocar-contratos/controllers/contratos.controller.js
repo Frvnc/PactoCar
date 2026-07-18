@@ -14,16 +14,29 @@ const generarContrato = async (req, res) => {
       return res.status(400).json({ error: 'El id de la reserva es obligatorio.' });
     }
 
+    // Los datos de identificacion (RUT, licencia, poliza) salen de la solicitud de
+    // verificacion aprobada de cada parte. Se usa LEFT JOIN porque el contrato debe
+    // poder emitirse aunque falte alguno
     const consulta = await db.query(
       `SELECT r.id, r.fecha_inicio, r.fecha_fin, r.monto_total, r.estado,
               r.conductor_id, v.propietario_id,
               v.marca, v.modelo, v.anio, v.patente,
               arr.nombre_completo AS arrendador,
-              con.nombre_completo AS arrendatario
+              con.nombre_completo AS arrendatario,
+              arr.email AS arrendador_email,
+              con.email AS arrendatario_email,
+              va.rut AS arrendador_rut,
+              va.aseguradora, va.numero_poliza,
+              vc.rut AS arrendatario_rut,
+              vc.numero_licencia, vc.clase_licencia
        FROM reservas r
        JOIN vehiculos v ON r.vehiculo_id = v.id
        JOIN usuarios arr ON v.propietario_id = arr.id
        JOIN usuarios con ON r.conductor_id = con.id
+       LEFT JOIN solicitudes_verificacion va
+              ON va.usuario_id = arr.id AND va.estado = 'aprobado'
+       LEFT JOIN solicitudes_verificacion vc
+              ON vc.usuario_id = con.id AND vc.estado = 'aprobado'
        WHERE r.id = $1`,
       [reserva_id]
     );
@@ -61,6 +74,18 @@ const generarContrato = async (req, res) => {
       garantia: pago ? pago.garantia : undefined,
       comision: pago ? pago.comision : undefined,
       metodo: pago ? pago.metodo : undefined,
+      arrendador_rut: r.arrendador_rut,
+      arrendatario_rut: r.arrendatario_rut,
+      arrendador_email: r.arrendador_email,
+      arrendatario_email: r.arrendatario_email,
+      aseguradora: r.aseguradora,
+      numero_poliza: r.numero_poliza,
+      numero_licencia: r.numero_licencia,
+      clase_licencia: r.clase_licencia,
+      marca: r.marca,
+      modelo: r.modelo,
+      anio: r.anio,
+      patente: r.patente,
     });
 
     const resultado = await db.query(
