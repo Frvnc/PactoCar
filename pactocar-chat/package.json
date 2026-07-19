@@ -13,7 +13,8 @@
     "testTimeout": 15000,
     "collectCoverageFrom": [
       "controllers/**/*.js",
-      "middlewares/**/*.js"
+      "middlewares/**/*.js",
+      "routes/**/*.js"
     ]
   },
   "license": "ISC",
