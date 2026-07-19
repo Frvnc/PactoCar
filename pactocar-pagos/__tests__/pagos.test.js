@@ -81,6 +81,40 @@ describe('POST /api/pagos', () => {
     expect(res.body.contrato.generado).toBe(false);
   });
 
+  test('201 — si la reserva ya tenia contrato, el pago se informa sin tratarlo como fallo', async () => {
+    global.fetch.mockResolvedValueOnce({ status: 409 });
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 10, conductor_id: 3, monto_total: 100000, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/pagos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.contrato.generado).toBe(false);
+    expect(res.body.contrato.motivo).toMatch(/ya existia/i);
+  });
+
+  test('201 — un error inesperado de contratos-service se informa con su codigo', async () => {
+    global.fetch.mockResolvedValueOnce({ status: 500 });
+    db.query
+      .mockResolvedValueOnce({ rows: [{ id: 10, conductor_id: 3, monto_total: 100000, estado: 'confirmada' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1, reserva_id: 10 }] });
+
+    const res = await request(app)
+      .post('/api/pagos')
+      .set('Authorization', `Bearer ${tokenConductor}`)
+      .send({ reserva_id: 10 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.contrato.generado).toBe(false);
+    expect(res.body.contrato.motivo).toContain('500');
+  });
+
   test('403 — propietario no puede pagar', async () => {
     const res = await request(app)
       .post('/api/pagos')
